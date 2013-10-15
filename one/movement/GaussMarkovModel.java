@@ -81,11 +81,19 @@ public class GaussMarkovModel extends MovementModel {
 			  - add a new waypoint to the path with (x_n, y_n) and speed s_n 
 		   4. store final value of s_n and d_n 
 		   5. return full path */
+		if(this.sN == Double.NaN) this.sN = meanSpeed;
+		if(this.dN == Double.NaN) this.dN = rng.nextDouble()*2*Math.PI;
+		
 	}
 
 	@Override
 	public Coord getInitialLocation() {
 		/* pick random location for the initial positioning (look and RWP code if you need help) */
+		assert rng != null : "MovementModel not initialized!";
+		Coord c = randomCoord();
+
+		this.lastWaypoint = c;
+		return c;
 	}
 	
 	protected double generateWaitTime() {
@@ -108,6 +116,11 @@ public class GaussMarkovModel extends MovementModel {
 	
 	protected double getGaussianSample(Random rng, double variance) {
 		return rng.nextGaussian() * variance;
+	}
+	
+	protected Coord randomCoord() {
+		return new Coord(rng.nextDouble() * getMaxX(),
+				rng.nextDouble() * getMaxY());
 	}
 	
 }

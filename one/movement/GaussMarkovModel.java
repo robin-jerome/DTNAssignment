@@ -1,7 +1,6 @@
 package movement;
 
 import java.util.Random;
-
 import core.Coord;
 import core.Settings;
 import core.SimClock;
@@ -83,7 +82,23 @@ public class GaussMarkovModel extends MovementModel {
 		   5. return full path */
 		if(this.sN == Double.NaN) this.sN = meanSpeed;
 		if(this.dN == Double.NaN) this.dN = rng.nextDouble()*2*Math.PI;
-		
+		Path p = new Path();
+		Coord newCord = lastWaypoint;
+		for (int i=0; i<PATH_LENGTH; i++) {
+			
+			sN = generateSpeed();
+			dN = generateDirection();
+			double xnminusone = lastWaypoint.getX();
+			double ynminusone = lastWaypoint.getY();
+			
+			double xn = xnminusone + sN*Math.cos(dN);
+			double yn = ynminusone + sN*Math.sin(dN);
+			newCord = new Coord(xn,yn);
+			p.addWaypoint(newCord, sN);
+			
+		}
+		this.lastWaypoint = newCord;
+		return p;
 	}
 
 	@Override
@@ -108,10 +123,18 @@ public class GaussMarkovModel extends MovementModel {
 	
 	protected double generateSpeed() {
 		/* draw sample from Gaussian distribution and calculate speed accoring to Gauss-Markov equation */
+		double oneMinusAlpha = 1-alpha;
+		double sqrtOneMinusAlphaSquare = Math.sqrt(1- alpha*alpha);
+		sN = (alpha*sN) + (oneMinusAlpha*meanSpeed) + Math.sqrt(speedVariance)*sqrtOneMinusAlphaSquare*speedGaussianRNG.nextDouble();
+		return sN;
 	}
 	
 	protected double generateDirection() {
 		/* draw sample from Gaussian distribution and calculate direction accoring to Gauss-Markov equation */
+		double oneMinusAlpha = 1-alpha;
+		double sqrtOneMinusAlphaSquare = Math.sqrt(1- alpha*alpha);
+		dN = (alpha*dN) + (oneMinusAlpha*meanDirection) + Math.sqrt(phaseVariance)*sqrtOneMinusAlphaSquare*directionGaussianRNG.nextDouble();
+		return dN;
 	}
 	
 	protected double getGaussianSample(Random rng, double variance) {

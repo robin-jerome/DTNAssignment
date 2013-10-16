@@ -28,10 +28,10 @@ public class GaussMarkovModel extends MovementModel {
 	private Random directionGaussianRNG;
 	
 	private static double alpha = 0.5;
-	private static double meanSpeed = 3.0;
-	private static double speedVariance = 0.1;
-	private static int timeInterval = 1;
-	private static double phaseVariance = 0.1;
+	private static double meanSpeed = 2.0;
+	private static double speedVariance = 0.5;
+	private static int timeInterval = 10;
+	private static double phaseVariance = 1.0;
 	private double meanDirection;
 	
 	public GaussMarkovModel(Settings s) {
@@ -51,10 +51,12 @@ public class GaussMarkovModel extends MovementModel {
 		this.sN = Double.NaN;
 		this.dN = Double.NaN;
 		this.meanDirection = rng.nextDouble()*2*Math.PI;
+		
 		if(settings.contains(SPEED_GAUSS_SEED))
 			this.speedGaussianRNG = new Random(settings.getInt(SPEED_GAUSS_SEED));
 		else
 			this.speedGaussianRNG = new Random(0);
+		
 		if(settings.contains(PHASE_GAUSS_SEED))
 			this.directionGaussianRNG = new Random(settings.getInt(PHASE_GAUSS_SEED));
 		else
@@ -80,25 +82,47 @@ public class GaussMarkovModel extends MovementModel {
 			  - add a new waypoint to the path with (x_n, y_n) and speed s_n 
 		   4. store final value of s_n and d_n 
 		   5. return full path */
-		if(this.sN == Double.NaN) this.sN = meanSpeed;
-		if(this.dN == Double.NaN) this.dN = rng.nextDouble()*2*Math.PI;
-		Path p = new Path();
-		Coord newCord = lastWaypoint;
-		for (int i=0; i<PATH_LENGTH; i++) {
-			
-			sN = generateSpeed();
-			dN = generateDirection();
-			double xnminusone = lastWaypoint.getX();
-			double ynminusone = lastWaypoint.getY();
-			
-			double xn = xnminusone + sN*Math.cos(dN);
-			double yn = ynminusone + sN*Math.sin(dN);
-			newCord = new Coord(xn,yn);
-			p.addWaypoint(newCord, sN);
-			
+		if(Double.isNaN(sN)) {
+			sN = meanSpeed;
+		} 
+		if(Double.isNaN(dN)) {
+			dN = rng.nextDouble()*2*Math.PI;
 		}
+		
+		
+		Path p = new Path();
+		
+		double xnminusone = lastWaypoint.getX();
+		double ynminusone = lastWaypoint.getY();
+		
+		if(xnminusone > 100 && xnminusone < 1900 && ynminusone < 100){
+			// Point near the roof -> change the mean direction to 270 degrees
+		} else if(xnminusone < 100 && ynminusone < 100){
+			// Point near the top left corner -> change the mean direction to 315 degrees
+		} else if(xnminusone < 100 && ynminusone > 100 && ynminusone < 1900){
+			// Point near the left border -> change the mean direction to 0 degrees
+		} else if(xnminusone < 100 && ynminusone > 1900){
+			// Point near the bottom left corner -> change the mean direction to 45 degrees
+		} else if(xnminusone > 100 && xnminusone < 1900 && ynminusone > 1900){
+			// Point near the bottom exit -> change the mean direction to 90 degrees
+		} else if(xnminusone > 1900 && ynminusone > 1900){
+			// Point near the bottom right corner -> change the mean direction to 135 degrees
+		} else if(xnminusone > 1900 && ynminusone > 100 && ynminusone < 1900){
+			// Point near the right border -> change the mean direction to 180 degrees
+		} else if(xnminusone > 1900 && ynminusone < 100){
+			// Point near the top right corner -> change the mean direction to 225 degrees
+		}
+		
+		sN = generateSpeed();
+		dN = generateDirection();
+		double xn = xnminusone + sN*Math.cos(2*Math.PI*dN);
+		double yn = ynminusone + sN*Math.sin(2*Math.PI*dN);
+		Coord newCord = new Coord(xn,yn);
+		p.addWaypoint(newCord, sN);
 		this.lastWaypoint = newCord;
 		return p;
+		
+		
 	}
 
 	@Override

@@ -73,6 +73,7 @@ public class GaussMarkovModel extends MovementModel {
 	
 	@Override
 	public Path getPath() {
+		
 		/* 1. If speed not initialised set it to the mean value
 		   2. If direction not initialised, pick random direction (uniformly distributed between 0 and 2pi)
 		   3. in the loop (its length is based on PATH_LENGTH value) do: 
@@ -89,45 +90,53 @@ public class GaussMarkovModel extends MovementModel {
 			dN = rng.nextDouble()*2*Math.PI;
 		}
 		
+		double previousSpeed = sN;
+		double previousDirection = dN;
+		
 		Path p = new Path();
 		
 		double xnminusone = lastWaypoint.getX();
 		double ynminusone = lastWaypoint.getY();
 		
-		if(xnminusone > 100 && xnminusone < 1900 && ynminusone < 100){
-			System.out.println(" Point near the roof -> change the mean direction to 270 degrees");
-			meanDirection = 2*Math.PI*(270d);
-			System.out.println("New mean direction: "+meanDirection);
-		} else if(xnminusone < 100 && ynminusone < 100){
-			System.out.println(" Point near the top left corner -> change the mean direction to 315 degrees");
-			meanDirection = 2*Math.PI*(315d);
-		} else if(xnminusone < 100 && ynminusone > 100 && ynminusone < 1900){
-			System.out.println(" Point near the left border -> change the mean direction to 0 degrees");
-			meanDirection = 2*Math.PI*(0d);
-		} else if(xnminusone < 100 && ynminusone > 1900){
-			System.out.println(" Point near the bottom left corner -> change the mean direction to 45 degrees");
-			meanDirection = 2*Math.PI*(45d);
-		} else if(xnminusone > 100 && xnminusone < 1900 && ynminusone > 1900){
-			System.out.println(" Point near the bottom exit -> change the mean direction to 90 degrees");
-			meanDirection = 2*Math.PI*(90d);
-		} else if(xnminusone > 1900 && ynminusone > 1900){
-			System.out.println(" Point near the bottom right corner -> change the mean direction to 135 degrees");
-			meanDirection = 2*Math.PI*(135d);
-		} else if(xnminusone > 1900 && ynminusone > 100 && ynminusone < 1900){
-			System.out.println(" Point near the right border -> change the mean direction to 180 degrees");
-			meanDirection = 2*Math.PI*(180d);
-		} else if(xnminusone > 1900 && ynminusone < 100){
-			System.out.println(" Point near the top right corner -> change the mean direction to 225 degrees");
-			meanDirection = 2*Math.PI*(225d);
+		if(xnminusone > 200 && xnminusone < 1800 && ynminusone < 200){
+			// System.out.println(" Point near the roof -> change the mean direction to 270 degrees");
+			meanDirection = 2*Math.PI*(270d/360d);
+		} else if(xnminusone < 200 && ynminusone < 200){
+			// System.out.println(" Point near the top left corner -> change the mean direction to 315 degrees");
+			meanDirection = 2*Math.PI*(315d/360d);
+		} else if(xnminusone < 200 && ynminusone > 200 && ynminusone < 1800){
+			// System.out.println(" Point near the left border -> change the mean direction to 0 degrees");
+			meanDirection = 2*Math.PI*(0d/360d);
+		} else if(xnminusone < 200 && ynminusone > 1800){
+			// System.out.println(" Point near the bottom left corner -> change the mean direction to 45 degrees");
+			meanDirection = 2*Math.PI*(45d/360d);
+		} else if(xnminusone > 200 && xnminusone < 1800 && ynminusone > 1800){
+			// System.out.println(" Point near the bottom exit -> change the mean direction to 90 degrees");
+			meanDirection = 2*Math.PI*(90d/360d);
+		} else if(xnminusone > 1800 && ynminusone > 1800){
+			// System.out.println(" Point near the bottom right corner -> change the mean direction to 135 degrees");
+			meanDirection = 2*Math.PI*(135d/360d);
+		} else if(xnminusone > 1800 && ynminusone > 200 && ynminusone < 1800){
+			// System.out.println(" Point near the right border -> change the mean direction to 180 degrees");
+			meanDirection = 2*Math.PI*(180d/360d);
+		} else if(xnminusone > 1800 && ynminusone < 200){
+			// System.out.println(" Point near the top right corner -> change the mean direction to 225 degrees");
+			meanDirection = 2*Math.PI*(225d/360d);
 		}
 		
-		sN = generateSpeed();
-		dN = generateDirection();
-		double xn = xnminusone + sN*Math.cos(2*Math.PI*dN);
-		double yn = ynminusone + sN*Math.sin(2*Math.PI*dN);
+		sN = generateSpeed(previousSpeed);
+		dN = generateDirection(previousDirection);
+		
+		double xn = xnminusone + previousSpeed*Math.cos(2*Math.PI*previousDirection);
+		double yn = ynminusone + previousSpeed*Math.sin(2*Math.PI*previousDirection);
+		
+		
 		Coord newCord = new Coord(xn,yn);
-		p.addWaypoint(newCord, sN);
+		p.addWaypoint(newCord, previousSpeed);
 		this.lastWaypoint = newCord;
+		
+		
+		
 		return p;
 		
 		
@@ -153,20 +162,21 @@ public class GaussMarkovModel extends MovementModel {
 		return new GaussMarkovModel(this);
 	}
 	
-	protected double generateSpeed() {
+	protected double generateSpeed(double previousSpeed) {
 		/* draw sample from Gaussian distribution and calculate speed accoring to Gauss-Markov equation */
-		double oneMinusAlpha = 1-alpha;
-		double sqrtOneMinusAlphaSquare = Math.sqrt(1- alpha*alpha);
-		sN = (alpha*sN) + (oneMinusAlpha*meanSpeed) + Math.sqrt(speedVariance)*sqrtOneMinusAlphaSquare*speedGaussianRNG.nextDouble();
-		return sN;
+		double oneMinusAlpha = 1d-alpha;
+		double sqrtOneMinusAlphaSquare = Math.sqrt(1d - alpha*alpha);
+		return((alpha*previousSpeed) + (oneMinusAlpha*meanSpeed) + Math.sqrt(speedVariance)*sqrtOneMinusAlphaSquare*speedGaussianRNG.nextGaussian());
+		
+		
 	}
 	
-	protected double generateDirection() {
+	protected double generateDirection(double previousDirection) {
 		/* draw sample from Gaussian distribution and calculate direction accoring to Gauss-Markov equation */
-		double oneMinusAlpha = 1-alpha;
-		double sqrtOneMinusAlphaSquare = Math.sqrt(1- alpha*alpha);
-		dN = (alpha*dN) + (oneMinusAlpha*meanDirection) + Math.sqrt(phaseVariance)*sqrtOneMinusAlphaSquare*directionGaussianRNG.nextDouble();
-		return dN;
+		double oneMinusAlpha = 1d-alpha;
+		double sqrtOneMinusAlphaSquare = Math.sqrt(1d - alpha*alpha);
+		return((alpha*previousDirection) + (oneMinusAlpha*meanDirection) + Math.sqrt(phaseVariance)*sqrtOneMinusAlphaSquare*directionGaussianRNG.nextGaussian());
+		
 	}
 	
 	protected double getGaussianSample(Random rng, double variance) {

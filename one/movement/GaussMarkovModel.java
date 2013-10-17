@@ -32,7 +32,7 @@ public class GaussMarkovModel extends MovementModel {
 	private static double speedVariance = 0.5;
 	private static int timeInterval = 10;
 	private static double phaseVariance = 1.0;
-	private double meanDirection;
+	private double meanDirection = rng.nextDouble()*2*Math.PI;
 	
 	public GaussMarkovModel(Settings s) {
 		super(s);
@@ -48,9 +48,8 @@ public class GaussMarkovModel extends MovementModel {
 		if(settings.contains(TIMEINTERVAL))
 			GaussMarkovModel.timeInterval = settings.getInt(TIMEINTERVAL);
 		
-		this.sN = Double.NaN;
-		this.dN = Double.NaN;
-		this.meanDirection = rng.nextDouble()*2*Math.PI;
+		sN = Double.NaN;
+		dN = Double.NaN;
 		
 		if(settings.contains(SPEED_GAUSS_SEED))
 			this.speedGaussianRNG = new Random(settings.getInt(SPEED_GAUSS_SEED));
@@ -67,6 +66,7 @@ public class GaussMarkovModel extends MovementModel {
 		super(gmm);
 		this.speedGaussianRNG = gmm.speedGaussianRNG;
 		this.directionGaussianRNG = gmm.directionGaussianRNG;
+		this.meanDirection = gmm.meanDirection;
 		this.sN = Double.NaN;
 		this.dN = Double.NaN;
 	}
@@ -89,28 +89,36 @@ public class GaussMarkovModel extends MovementModel {
 			dN = rng.nextDouble()*2*Math.PI;
 		}
 		
-		
 		Path p = new Path();
 		
 		double xnminusone = lastWaypoint.getX();
 		double ynminusone = lastWaypoint.getY();
 		
 		if(xnminusone > 100 && xnminusone < 1900 && ynminusone < 100){
-			// Point near the roof -> change the mean direction to 270 degrees
+			System.out.println(" Point near the roof -> change the mean direction to 270 degrees");
+			meanDirection = 2*Math.PI*(270d);
+			System.out.println("New mean direction: "+meanDirection);
 		} else if(xnminusone < 100 && ynminusone < 100){
-			// Point near the top left corner -> change the mean direction to 315 degrees
+			System.out.println(" Point near the top left corner -> change the mean direction to 315 degrees");
+			meanDirection = 2*Math.PI*(315d);
 		} else if(xnminusone < 100 && ynminusone > 100 && ynminusone < 1900){
-			// Point near the left border -> change the mean direction to 0 degrees
+			System.out.println(" Point near the left border -> change the mean direction to 0 degrees");
+			meanDirection = 2*Math.PI*(0d);
 		} else if(xnminusone < 100 && ynminusone > 1900){
-			// Point near the bottom left corner -> change the mean direction to 45 degrees
+			System.out.println(" Point near the bottom left corner -> change the mean direction to 45 degrees");
+			meanDirection = 2*Math.PI*(45d);
 		} else if(xnminusone > 100 && xnminusone < 1900 && ynminusone > 1900){
-			// Point near the bottom exit -> change the mean direction to 90 degrees
+			System.out.println(" Point near the bottom exit -> change the mean direction to 90 degrees");
+			meanDirection = 2*Math.PI*(90d);
 		} else if(xnminusone > 1900 && ynminusone > 1900){
-			// Point near the bottom right corner -> change the mean direction to 135 degrees
+			System.out.println(" Point near the bottom right corner -> change the mean direction to 135 degrees");
+			meanDirection = 2*Math.PI*(135d);
 		} else if(xnminusone > 1900 && ynminusone > 100 && ynminusone < 1900){
-			// Point near the right border -> change the mean direction to 180 degrees
+			System.out.println(" Point near the right border -> change the mean direction to 180 degrees");
+			meanDirection = 2*Math.PI*(180d);
 		} else if(xnminusone > 1900 && ynminusone < 100){
-			// Point near the top right corner -> change the mean direction to 225 degrees
+			System.out.println(" Point near the top right corner -> change the mean direction to 225 degrees");
+			meanDirection = 2*Math.PI*(225d);
 		}
 		
 		sN = generateSpeed();

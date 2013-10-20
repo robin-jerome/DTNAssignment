@@ -83,60 +83,59 @@ public class GaussMarkovModel extends MovementModel {
 			  - add a new waypoint to the path with (x_n, y_n) and speed s_n 
 		   4. store final value of s_n and d_n 
 		   5. return full path */
-		if(Double.isNaN(this.sN)) {
-			this.sN = meanSpeed;
-		} 
-		if(Double.isNaN(this.dN)) {
-			this.dN = rng.nextDouble()*2*Math.PI;
-		}
+
 		
 		double currSpeed, currDirection;
 		double newX = 0, newY = 0, currX, currY;
-		Path p = new Path();
 		
-		currSpeed = this.sN;
-		currDirection = this.dN;
+		Path p = new Path();
+		if(Double.isNaN(sN)) {
+			sN = meanSpeed;
+		} 
+		if(Double.isNaN(dN)) {
+			dN = rng.nextDouble()*2*Math.PI;
+		}		
+		currSpeed = sN;
+		currDirection = dN;
 		currX = lastWaypoint.getX();
 		currY = lastWaypoint.getY();
-		
+
 	if(currX > 200 && currX < 1800 && currY < 200){
 			// Bottom Center
-			this.meanDirection = Math.PI / 2;
+			meanDirection = Math.PI / 2;
 		} else if(currX < 200 && currY < 200){
 			// bottom left
-			this.meanDirection = Math.PI / 4;
+			meanDirection = Math.PI / 4;
 		} else if(currX < 200 && currY > 200 && currY < 1800){
 			// center left
-			this.meanDirection = 0;
+			meanDirection = 0;
 		} else if(currX < 200 && currY > 1800){
 			// Top left
-			this.meanDirection = 7 * Math.PI / 4;
+			meanDirection = 7 * Math.PI / 4;
 		} else if(currX > 200 && currX < 1800 && currY > 1800){
 			// top center
-			this.meanDirection = 3 * Math.PI / 2;
+			meanDirection = 3 * Math.PI / 2;
 		} else if(currX > 1800 && currY > 1800){
 			// top right
-			this.meanDirection = 5 * Math.PI / 4;
+			meanDirection = 5 * Math.PI / 4;
 		} else if(currX > 1800 && currY > 200 && currY < 1800){
 			// center right
-			this.meanDirection = Math.PI;
+			meanDirection = Math.PI;
 		} else if(currX > 1800 && currY < 200){
 			// bottom right
-			this.meanDirection = 3 * Math.PI / 4;
+			meanDirection = 3 * Math.PI / 4;
 		}
 
 		
-		this.sN = generateSpeed(currSpeed);
-		this.dN = generateDirection(currDirection);
-		
-		newX = currX + currSpeed*Math.cos(currDirection);
-		newY = currY + currSpeed*Math.sin(currDirection);
-		
+		sN = generateSpeed(currSpeed);
+		dN = generateDirection(currDirection);
+		newX = currX + sN*Math.cos(dN);
+		newY = currY + sN*Math.sin(dN);
 		
 		Coord newCord = new Coord(newX,newY);
-		p.addWaypoint(newCord, currSpeed);
+		p.addWaypoint(newCord, sN);
 		this.lastWaypoint = newCord;
-		
+
 		return p;
 	}
 
@@ -162,9 +161,9 @@ public class GaussMarkovModel extends MovementModel {
 	
 	protected double generateSpeed(double previousSpeed) {
 		/* draw sample from Gaussian distribution and calculate speed accoring to Gauss-Markov equation */
-		double oneMinusAlpha = 1d-alpha;
-		double sqrtOneMinusAlphaSquare = Math.sqrt(1d - alpha*alpha);
-		return((alpha*previousSpeed) + (oneMinusAlpha*meanSpeed) + Math.sqrt(speedVariance)*sqrtOneMinusAlphaSquare*speedGaussianRNG.nextGaussian());
+		double oneMinusAlpha = (1d-alpha);
+		double sqrtOneMinusAlphaSquare = Math.sqrt((1d - alpha*alpha));
+		return((alpha*previousSpeed) + (oneMinusAlpha*meanSpeed) + Math.sqrt(speedVariance)*sqrtOneMinusAlphaSquare * getGaussianSample(speedGaussianRNG, speedVariance));//speedGaussianRNG.nextGaussian());
 		
 		
 	}
@@ -173,7 +172,7 @@ public class GaussMarkovModel extends MovementModel {
 		/* draw sample from Gaussian distribution and calculate direction accoring to Gauss-Markov equation */
 		double oneMinusAlpha = 1d-alpha;
 		double sqrtOneMinusAlphaSquare = Math.sqrt(1d - alpha*alpha);
-		return((alpha*previousDirection) + (oneMinusAlpha*meanDirection) + Math.sqrt(phaseVariance)*sqrtOneMinusAlphaSquare*directionGaussianRNG.nextGaussian());
+		return((alpha*previousDirection) + (oneMinusAlpha*meanDirection) + Math.sqrt(phaseVariance)*sqrtOneMinusAlphaSquare * getGaussianSample(directionGaussianRNG, phaseVariance));//directionGaussianRNG.nextGaussian());
 		
 	}
 	

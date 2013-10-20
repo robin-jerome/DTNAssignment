@@ -27,8 +27,8 @@ public class GaussMarkovModel extends MovementModel {
 	private Random speedGaussianRNG;
 	private Random directionGaussianRNG;
 	
-	private static double alpha = 0.5;
-	private static double meanSpeed = 2.0;
+	private static double alpha = 0.34;
+	private static double meanSpeed = 1.0;
 	private static double speedVariance = 0.5;
 	private static int timeInterval = 10;
 	private static double phaseVariance = 1.0;
@@ -83,63 +83,61 @@ public class GaussMarkovModel extends MovementModel {
 			  - add a new waypoint to the path with (x_n, y_n) and speed s_n 
 		   4. store final value of s_n and d_n 
 		   5. return full path */
-		if(Double.isNaN(sN)) {
-			sN = meanSpeed;
+		if(Double.isNaN(this.sN)) {
+			this.sN = meanSpeed;
 		} 
-		if(Double.isNaN(dN)) {
-			dN = rng.nextDouble()*2*Math.PI;
+		if(Double.isNaN(this.dN)) {
+			this.dN = rng.nextDouble()*2*Math.PI;
 		}
 		
-		double previousSpeed = sN;
-		double previousDirection = dN;
-		
+		double currSpeed, currDirection;
+		double newX = 0, newY = 0, currX, currY;
 		Path p = new Path();
 		
-		double xnminusone = lastWaypoint.getX();
-		double ynminusone = lastWaypoint.getY();
+		currSpeed = this.sN;
+		currDirection = this.dN;
+		currX = lastWaypoint.getX();
+		currY = lastWaypoint.getY();
 		
-		if(xnminusone > 200 && xnminusone < 1800 && ynminusone < 200){
-			// System.out.println(" Point near the roof -> change the mean direction to 270 degrees");
-			meanDirection = 2*Math.PI*(270d/360d);
-		} else if(xnminusone < 200 && ynminusone < 200){
-			// System.out.println(" Point near the top left corner -> change the mean direction to 315 degrees");
-			meanDirection = 2*Math.PI*(315d/360d);
-		} else if(xnminusone < 200 && ynminusone > 200 && ynminusone < 1800){
-			// System.out.println(" Point near the left border -> change the mean direction to 0 degrees");
-			meanDirection = 2*Math.PI*(0d/360d);
-		} else if(xnminusone < 200 && ynminusone > 1800){
-			// System.out.println(" Point near the bottom left corner -> change the mean direction to 45 degrees");
-			meanDirection = 2*Math.PI*(45d/360d);
-		} else if(xnminusone > 200 && xnminusone < 1800 && ynminusone > 1800){
-			// System.out.println(" Point near the bottom exit -> change the mean direction to 90 degrees");
-			meanDirection = 2*Math.PI*(90d/360d);
-		} else if(xnminusone > 1800 && ynminusone > 1800){
-			// System.out.println(" Point near the bottom right corner -> change the mean direction to 135 degrees");
-			meanDirection = 2*Math.PI*(135d/360d);
-		} else if(xnminusone > 1800 && ynminusone > 200 && ynminusone < 1800){
-			// System.out.println(" Point near the right border -> change the mean direction to 180 degrees");
-			meanDirection = 2*Math.PI*(180d/360d);
-		} else if(xnminusone > 1800 && ynminusone < 200){
-			// System.out.println(" Point near the top right corner -> change the mean direction to 225 degrees");
-			meanDirection = 2*Math.PI*(225d/360d);
+	if(currX > 200 && currX < 1800 && currY < 200){
+			// Bottom Center
+			this.meanDirection = Math.PI / 2;
+		} else if(currX < 200 && currY < 200){
+			// bottom left
+			this.meanDirection = Math.PI / 4;
+		} else if(currX < 200 && currY > 200 && currY < 1800){
+			// center left
+			this.meanDirection = 0;
+		} else if(currX < 200 && currY > 1800){
+			// Top left
+			this.meanDirection = 7 * Math.PI / 4;
+		} else if(currX > 200 && currX < 1800 && currY > 1800){
+			// top center
+			this.meanDirection = 3 * Math.PI / 2;
+		} else if(currX > 1800 && currY > 1800){
+			// top right
+			this.meanDirection = 5 * Math.PI / 4;
+		} else if(currX > 1800 && currY > 200 && currY < 1800){
+			// center right
+			this.meanDirection = Math.PI;
+		} else if(currX > 1800 && currY < 200){
+			// bottom right
+			this.meanDirection = 3 * Math.PI / 4;
 		}
+
 		
-		sN = generateSpeed(previousSpeed);
-		dN = generateDirection(previousDirection);
+		this.sN = generateSpeed(currSpeed);
+		this.dN = generateDirection(currDirection);
 		
-		double xn = xnminusone + previousSpeed*Math.cos(2*Math.PI*previousDirection);
-		double yn = ynminusone + previousSpeed*Math.sin(2*Math.PI*previousDirection);
+		newX = currX + currSpeed*Math.cos(currDirection);
+		newY = currY + currSpeed*Math.sin(currDirection);
 		
 		
-		Coord newCord = new Coord(xn,yn);
-		p.addWaypoint(newCord, previousSpeed);
+		Coord newCord = new Coord(newX,newY);
+		p.addWaypoint(newCord, currSpeed);
 		this.lastWaypoint = newCord;
 		
-		
-		
 		return p;
-		
-		
 	}
 
 	@Override

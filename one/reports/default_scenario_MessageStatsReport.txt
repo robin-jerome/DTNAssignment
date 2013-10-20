@@ -1,5 +1,5 @@
 Message stats for scenario default_scenario
-sim_time: 2211.6000
+sim_time: 10525.9000
 created: 0
 started: 0
 relayed: 0

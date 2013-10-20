@@ -3,7 +3,6 @@ package movement;
 import java.util.Random;
 import core.Coord;
 import core.Settings;
-import core.SimClock;
 
 public class GaussMarkovModel extends MovementModel {
 	private static final int PATH_LENGTH = 1;
@@ -26,7 +25,6 @@ public class GaussMarkovModel extends MovementModel {
 	
 	private Random speedGaussianRNG;
 	private Random directionGaussianRNG;
-	
 	private static double alpha = 0.34;
 	private static double meanSpeed = 1.0;
 	private static double speedVariance = 0.5;
@@ -100,30 +98,31 @@ public class GaussMarkovModel extends MovementModel {
 		currX = lastWaypoint.getX();
 		currY = lastWaypoint.getY();
 
+    
 	if(currX > 200 && currX < 1800 && currY < 200){
-			// Bottom Center
-			meanDirection = Math.PI / 2;
+			// Bottom Center - 180 degrees average shift
+			meanDirection = rng.nextDouble() * Math.PI; 
 		} else if(currX < 200 && currY < 200){
-			// bottom left
-			meanDirection = Math.PI / 4;
+			// bottom left - 45 degrees average shift
+			meanDirection = rng.nextDouble() * (Math.PI/2d); 
 		} else if(currX < 200 && currY > 200 && currY < 1800){
-			// center left
-			meanDirection = 0;
+			// center left - 0 degree average shift
+			meanDirection = (rng.nextDouble() * Math.PI) + (3 * Math.PI / 2d);
 		} else if(currX < 200 && currY > 1800){
-			// Top left
-			meanDirection = 7 * Math.PI / 4;
+			// Top left - 315 degree average shift
+			meanDirection = (rng.nextDouble() * (Math.PI/2d)) + (3 * Math.PI / 2d);
 		} else if(currX > 200 && currX < 1800 && currY > 1800){
-			// top center
-			meanDirection = 3 * Math.PI / 2;
+			// top center - 370 degree average shift
+			meanDirection = (rng.nextDouble() * Math.PI) + Math.PI;
 		} else if(currX > 1800 && currY > 1800){
-			// top right
-			meanDirection = 5 * Math.PI / 4;
+			// top right - 225 degree average shift
+			meanDirection = (rng.nextDouble() * (Math.PI/2d)) + (Math.PI / 2d);
 		} else if(currX > 1800 && currY > 200 && currY < 1800){
-			// center right
-			meanDirection = Math.PI;
+			// center right - 180 degree average shift
+			meanDirection = (rng.nextDouble() * Math.PI) + (Math.PI / 2d);
 		} else if(currX > 1800 && currY < 200){
-			// bottom right
-			meanDirection = 3 * Math.PI / 4;
+			// bottom right - 135 degree average shift
+			meanDirection = (rng.nextDouble() * (Math.PI/2d)) + (Math.PI / 2d);
 		}
 
 		
@@ -163,16 +162,19 @@ public class GaussMarkovModel extends MovementModel {
 		/* draw sample from Gaussian distribution and calculate speed accoring to Gauss-Markov equation */
 		double oneMinusAlpha = (1d-alpha);
 		double sqrtOneMinusAlphaSquare = Math.sqrt((1d - alpha*alpha));
-		return((alpha*previousSpeed) + (oneMinusAlpha*meanSpeed) + Math.sqrt(speedVariance)*sqrtOneMinusAlphaSquare * getGaussianSample(speedGaussianRNG, speedVariance));//speedGaussianRNG.nextGaussian());
-		
-		
+		double generatedSpeed = (alpha*previousSpeed) + (oneMinusAlpha*meanSpeed) + Math.sqrt(speedVariance)*sqrtOneMinusAlphaSquare * getGaussianSample(speedGaussianRNG, speedVariance);
+		if(generatedSpeed < 0d){
+			return generatedSpeed * -1d;
+		} else {
+			return generatedSpeed;
+		}	
 	}
 	
 	protected double generateDirection(double previousDirection) {
 		/* draw sample from Gaussian distribution and calculate direction accoring to Gauss-Markov equation */
 		double oneMinusAlpha = 1d-alpha;
 		double sqrtOneMinusAlphaSquare = Math.sqrt(1d - alpha*alpha);
-		return((alpha*previousDirection) + (oneMinusAlpha*meanDirection) + Math.sqrt(phaseVariance)*sqrtOneMinusAlphaSquare * getGaussianSample(directionGaussianRNG, phaseVariance));//directionGaussianRNG.nextGaussian());
+		return((alpha*previousDirection) + (oneMinusAlpha*meanDirection) + Math.sqrt(phaseVariance)*sqrtOneMinusAlphaSquare * getGaussianSample(directionGaussianRNG, phaseVariance));
 		
 	}
 	

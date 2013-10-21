@@ -22,11 +22,12 @@ public class GaussMarkovModel extends MovementModel {
 	
 	private double sN;
 	private double dN;
+	private int count = 1;
 	
 	private Random speedGaussianRNG;
 	private Random directionGaussianRNG;
-	private static double alpha = 0.34;
-	private static double meanSpeed = 1.0;
+	private static double alpha = 0.5;
+	private static double meanSpeed = 2.0;
 	private static double speedVariance = 0.5;
 	private static int timeInterval = 10;
 	private static double phaseVariance = 1.0;
@@ -71,7 +72,7 @@ public class GaussMarkovModel extends MovementModel {
 	
 	@Override
 	public Path getPath() {
-		
+
 		/* 1. If speed not initialised set it to the mean value
 		   2. If direction not initialised, pick random direction (uniformly distributed between 0 and 2pi)
 		   3. in the loop (its length is based on PATH_LENGTH value) do: 
@@ -82,10 +83,10 @@ public class GaussMarkovModel extends MovementModel {
 		   4. store final value of s_n and d_n 
 		   5. return full path */
 
-		
+
 		double currSpeed, currDirection;
 		double newX = 0, newY = 0, currX, currY;
-		
+
 		Path p = new Path();
 		if(Double.isNaN(sN)) {
 			sN = meanSpeed;
@@ -98,43 +99,50 @@ public class GaussMarkovModel extends MovementModel {
 		currX = lastWaypoint.getX();
 		currY = lastWaypoint.getY();
 
-    
-	if(currX > 200 && currX < 1800 && currY < 200){
+
+		if(currX > 50 && currX < 1950 && currY < 50){
 			// Bottom Center - 180 degrees average shift
 			meanDirection = rng.nextDouble() * Math.PI; 
-		} else if(currX < 200 && currY < 200){
+		} else if(currX < 50 && currY < 50){
 			// bottom left - 45 degrees average shift
 			meanDirection = rng.nextDouble() * (Math.PI/2d); 
-		} else if(currX < 200 && currY > 200 && currY < 1800){
+		} else if(currX < 50 && currY > 50 && currY < 1950){
 			// center left - 0 degree average shift
 			meanDirection = (rng.nextDouble() * Math.PI) + (3 * Math.PI / 2d);
-		} else if(currX < 200 && currY > 1800){
+		} else if(currX < 50 && currY > 1950){
 			// Top left - 315 degree average shift
 			meanDirection = (rng.nextDouble() * (Math.PI/2d)) + (3 * Math.PI / 2d);
-		} else if(currX > 200 && currX < 1800 && currY > 1800){
+		} else if(currX > 50 && currX < 1950 && currY > 1950){
 			// top center - 370 degree average shift
 			meanDirection = (rng.nextDouble() * Math.PI) + Math.PI;
-		} else if(currX > 1800 && currY > 1800){
+		} else if(currX > 1950 && currY > 1950){
 			// top right - 225 degree average shift
 			meanDirection = (rng.nextDouble() * (Math.PI/2d)) + (Math.PI / 2d);
-		} else if(currX > 1800 && currY > 200 && currY < 1800){
+		} else if(currX > 1950 && currY > 50 && currY < 1950){
 			// center right - 180 degree average shift
 			meanDirection = (rng.nextDouble() * Math.PI) + (Math.PI / 2d);
-		} else if(currX > 1800 && currY < 200){
+		} else if(currX > 1950 && currY < 50){
 			// bottom right - 135 degree average shift
 			meanDirection = (rng.nextDouble() * (Math.PI/2d)) + (Math.PI / 2d);
 		}
 
-		
+
 		sN = generateSpeed(currSpeed);
 		dN = generateDirection(currDirection);
+		
+		meanSpeed = (double)(meanSpeed * count + sN)/(count+1);
+		System.out.println(" Before "+meanDirection);
+		meanDirection = (double)(meanDirection * count + dN)/(count+1);
+		System.out.println(" After "+meanDirection);
+		
 		newX = currX + sN*Math.cos(dN);
 		newY = currY + sN*Math.sin(dN);
-		
+
 		Coord newCord = new Coord(newX,newY);
 		p.addWaypoint(newCord, sN);
 		this.lastWaypoint = newCord;
 
+		count++;
 		return p;
 	}
 

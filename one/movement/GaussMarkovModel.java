@@ -22,7 +22,6 @@ public class GaussMarkovModel extends MovementModel {
 	
 	private double sN;
 	private double dN;
-	private int count = 1;
 	
 	private Random speedGaussianRNG;
 	private Random directionGaussianRNG;
@@ -130,11 +129,6 @@ public class GaussMarkovModel extends MovementModel {
 		sN = generateSpeed(currSpeed);
 		dN = generateDirection(currDirection);
 		
-		meanSpeed = (double)(meanSpeed * count + sN)/(count+1);
-		System.out.println(" Before "+meanDirection);
-		meanDirection = (double)(meanDirection * count + dN)/(count+1);
-		System.out.println(" After "+meanDirection);
-		
 		newX = currX + sN*Math.cos(dN);
 		newY = currY + sN*Math.sin(dN);
 
@@ -142,7 +136,7 @@ public class GaussMarkovModel extends MovementModel {
 		p.addWaypoint(newCord, sN);
 		this.lastWaypoint = newCord;
 
-		count++;
+		
 		return p;
 	}
 

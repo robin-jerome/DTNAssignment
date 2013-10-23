@@ -85,6 +85,7 @@ public class GaussMarkovModel extends MovementModel {
 
 		double currSpeed, currDirection;
 		double newX = 0, newY = 0, currX, currY;
+		int flag = 0;
 
 		Path p = new Path();
 		if(Double.isNaN(sN)) {
@@ -101,33 +102,44 @@ public class GaussMarkovModel extends MovementModel {
 
 		if(currX > 50 && currX < 1950 && currY < 50){
 			// Bottom Center - 180 degrees average shift
-			meanDirection = rng.nextDouble() * Math.PI; 
+			meanDirection = rng.nextDouble() * Math.PI;
+			flag = 1;
 		} else if(currX < 50 && currY < 50){
 			// bottom left - 45 degrees average shift
 			meanDirection = rng.nextDouble() * (Math.PI/2d); 
+			flag = 1;
 		} else if(currX < 50 && currY > 50 && currY < 1950){
 			// center left - 0 degree average shift
 			meanDirection = (rng.nextDouble() * Math.PI) + (3 * Math.PI / 2d);
+			flag = 1;
 		} else if(currX < 50 && currY > 1950){
 			// Top left - 315 degree average shift
 			meanDirection = (rng.nextDouble() * (Math.PI/2d)) + (3 * Math.PI / 2d);
+			flag = 1;
 		} else if(currX > 50 && currX < 1950 && currY > 1950){
 			// top center - 370 degree average shift
 			meanDirection = (rng.nextDouble() * Math.PI) + Math.PI;
+			flag = 1;
 		} else if(currX > 1950 && currY > 1950){
 			// top right - 225 degree average shift
 			meanDirection = (rng.nextDouble() * (Math.PI/2d)) + (Math.PI / 2d);
+			flag = 1;
 		} else if(currX > 1950 && currY > 50 && currY < 1950){
 			// center right - 180 degree average shift
 			meanDirection = (rng.nextDouble() * Math.PI) + (Math.PI / 2d);
+			flag = 1;
 		} else if(currX > 1950 && currY < 50){
 			// bottom right - 135 degree average shift
 			meanDirection = (rng.nextDouble() * (Math.PI/2d)) + (Math.PI / 2d);
+			flag = 1;
 		}
 
 
 		sN = generateSpeed(currSpeed);
-		dN = generateDirection(currDirection);
+		if (flag == 1)
+			dN = meanDirection;
+		else
+			dN = generateDirection(currDirection);
 		
 		newX = currX + sN*Math.cos(dN);
 		newY = currY + sN*Math.sin(dN);

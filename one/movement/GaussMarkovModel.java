@@ -141,10 +141,11 @@ public class GaussMarkovModel extends MovementModel {
 		else
 			dN = generateDirection(currDirection);
 		
-		newX = currX + sN*Math.cos(dN);
-		newY = currY + sN*Math.sin(dN);
+		newX = currX + sN*timeInterval*Math.cos(dN);
+		newY = currY + sN*timeInterval*Math.sin(dN);
 
 		Coord newCord = new Coord(newX,newY);
+		p.addWaypoint(new Coord(currX, currY));
 		p.addWaypoint(newCord, sN);
 		this.lastWaypoint = newCord;
 

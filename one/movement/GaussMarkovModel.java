@@ -94,11 +94,14 @@ public class GaussMarkovModel extends MovementModel {
 		if(Double.isNaN(dN)) {
 			dN = rng.nextDouble()*2*Math.PI;
 		}		
+		
+		for (int i=0; i<PATH_LENGTH; i++) {
 		currSpeed = sN;
 		currDirection = dN;
 		currX = lastWaypoint.getX();
 		currY = lastWaypoint.getY();
-
+		
+		p.addWaypoint(lastWaypoint.clone());
 
 		if(currX > 50 && currX < 1950 && currY < 50){
 			// Bottom Center - 180 degrees average shift
@@ -117,12 +120,12 @@ public class GaussMarkovModel extends MovementModel {
 			meanDirection = (rng.nextDouble() * (Math.PI/2d)) + (3 * Math.PI / 2d);
 			flag = 1;
 		} else if(currX > 50 && currX < 1950 && currY > 1950){
-			// top center - 370 degree average shift
+			// top center - 270 degree average shift
 			meanDirection = (rng.nextDouble() * Math.PI) + Math.PI;
 			flag = 1;
 		} else if(currX > 1950 && currY > 1950){
 			// top right - 225 degree average shift
-			meanDirection = (rng.nextDouble() * (Math.PI/2d)) + (Math.PI / 2d);
+			meanDirection = (rng.nextDouble() * (Math.PI/2d)) + Math.PI;
 			flag = 1;
 		} else if(currX > 1950 && currY > 50 && currY < 1950){
 			// center right - 180 degree average shift
@@ -133,23 +136,21 @@ public class GaussMarkovModel extends MovementModel {
 			meanDirection = (rng.nextDouble() * (Math.PI/2d)) + (Math.PI / 2d);
 			flag = 1;
 		}
-
-
+		
 		sN = generateSpeed(currSpeed);
 		if (flag == 1)
 			dN = meanDirection;
 		else
 			dN = generateDirection(currDirection);
-		
+			
 		newX = currX + sN*timeInterval*Math.cos(dN);
 		newY = currY + sN*timeInterval*Math.sin(dN);
 
 		Coord newCord = new Coord(newX,newY);
-		p.addWaypoint(new Coord(currX, currY));
+		
 		p.addWaypoint(newCord, sN);
 		this.lastWaypoint = newCord;
-
-		
+		}
 		return p;
 	}
 

@@ -1,0 +1,20 @@
+Message stats for scenario plain_area_scenario-10-seed-1
+sim_time: 86400.0000
+created: 8640
+started: 3798
+relayed: 3004
+aborted: 794
+dropped: 6724
+removed: 0
+delivered: 3004
+delivery_prob: 0.3477
+response_prob: 0.0000
+overhead_ratio: 0.0000
+latency_avg: 8466.5192
+latency_med: 7827.4000
+hopcount_avg: 1.0000
+hopcount_med: 1
+buffertime_avg: 19116.2485
+buffertime_med: 18818.8000
+rtt_avg: NaN
+rtt_med: NaN

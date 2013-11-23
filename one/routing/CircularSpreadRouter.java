@@ -15,6 +15,8 @@ public class CircularSpreadRouter extends ActiveRouter {
 	
 	/** identifier for the initial number of copies setting ({@value})*/ 
 	public static final String NROF_COPIES = "nrofCopies";
+	/** identifier for the initial number of copies setting ({@value})*/ 
+	public static final String DIRECTION_COEFF = "directionCoefficient";
 	/** identifier for the binary-mode setting ({@value})*/ 
 	public static final String BINARY_MODE = "binaryMode";
 	/** SprayAndWait router's settings name space ({@value})*/ 
@@ -25,18 +27,21 @@ public class CircularSpreadRouter extends ActiveRouter {
 	
 	protected int initialNrofCopies;
 	protected boolean isBinary;
+	protected int directionCoefficient;
 	
 	public CircularSpreadRouter(Settings s) {
 		super(s);
 		Settings csnwSettings = new Settings(CIRCULARSPREAD_NS);
 		initialNrofCopies = csnwSettings.getInt(NROF_COPIES);
-		isBinary = csnwSettings.getBoolean( BINARY_MODE);
+//		directionCoefficient = csnwSettings.getInt(DIRECTION_COEFF);
+		isBinary = csnwSettings.getBoolean(BINARY_MODE);
 	}
 	
 	public CircularSpreadRouter(CircularSpreadRouter r) {
 		super(r);
 		this.initialNrofCopies = r.initialNrofCopies;
 		this.isBinary = r.isBinary;
+		this.directionCoefficient = r.directionCoefficient;
 	}
 	
 	@Override
@@ -94,26 +99,24 @@ public class CircularSpreadRouter extends ActiveRouter {
 		if (copiesLeft.size() > 0) {
 			/* try to send those messages */
 			List<Connection> connections = getConnections();
-			trySpreadingMessagesInConnections(connections.size(), connections, copiesLeft);
+			trySpreadingMessagesInConnections(connections, copiesLeft);
 		}
 	}
 	
 	
-	protected Connection trySpreadingMessagesInConnections(int count, List<Connection> connections, List<Message> copiesLeft){
+	protected Connection trySpreadingMessagesInConnections(List<Connection> connections, List<Message> copiesLeft){
 		
 		if (connections.size() == 0 || this.getNrofMessages() == 0) {
 			return null;
 		}
-		if(count > 0){
-			List<Connection> spreadingConnections = filterConnections(connections, count);
-			return tryMessagesToConnections(copiesLeft, spreadingConnections);
-		} else {
-			return tryMessagesToConnections(copiesLeft, connections);
-		}
+		List<Connection> spreadingConnections = filterConnections(connections);
+		return tryMessagesToConnections(copiesLeft, spreadingConnections);
+		
 	}
 		
 	
-	private List<Connection> filterConnections(List<Connection> connections, int requiredConnections){
+	private List<Connection> filterConnections(List<Connection> connections){
+		DTNHost host = getHost();
 		double selfDir = getDirectionofHost(getHost());
 		List<Connection> filteredConnections = new LinkedList<Connection>();
 		Map<Double, Connection> directionConnectionMap = new TreeMap<Double, Connection>();
@@ -121,10 +124,11 @@ public class CircularSpreadRouter extends ActiveRouter {
 		for(Connection conn : connections){
 			double peerDir = getDirectionofHost(conn.getOtherNode(getHost()));
 			double directionDeviation = Double.valueOf(Math.abs(selfDir-peerDir));
+			System.out.println(directionDeviation);
 			directionConnectionMap.put(directionDeviation, conn);
 		}
 		
-		int interval = connections.size()/requiredConnections;
+		int interval = connections.size()/1;
 		int count = 0;
 		for(Connection conn : directionConnectionMap.values()) {
 			count ++;
@@ -132,6 +136,8 @@ public class CircularSpreadRouter extends ActiveRouter {
 				filteredConnections.add(conn);
 			}
 		}
+		
+
 		
 		if(filteredConnections.isEmpty() && !connections.isEmpty()){
 			return connections;
@@ -144,27 +150,19 @@ public class CircularSpreadRouter extends ActiveRouter {
 	}
 	
 	private double getDirectionofHost(DTNHost host) {
-		double nodeDir = 0d;
-		if(null != host.getPath()) {
-			Coord selfLoc = host.getLocation();
-			Coord nextLoc = host.getPath().hasNext() == true ? host.getPath().getNextWaypoint() : null;
-			if(null != nextLoc){
-				nodeDir =  getDirection(selfLoc, nextLoc);
-			}
+		if(null != host.getPath() && host.getPath().getCoords().size() == 2) {
+			Coord selfLoc = host.getPath().getCoords().get(0);
+			Coord nextLoc = host.getPath().getCoords().get(1);
+			return getDirection(selfLoc, nextLoc);
+		} else {
+			System.err.println("Direction of host cannot be found");
+			return 0d;
 		}
-		return nodeDir;
+		
 	}
 
 	private double getDirection(Coord selfLoc, Coord nextLoc) {
-		if(nextLoc.getX() != selfLoc.getX()){
-			return((nextLoc.getY()-selfLoc.getY())/(nextLoc.getX()-selfLoc.getX()));
-		} else if(nextLoc.getY() > selfLoc.getY()){
-			return 1d;
-		} else if(nextLoc.getY() < selfLoc.getY()){
-			return -1d;
-		} else {
-			return 0;
-		}
+		return (Math.atan2((nextLoc.getY()-selfLoc.getY()), (nextLoc.getX()-selfLoc.getX())));
 	}
 
 	@Override

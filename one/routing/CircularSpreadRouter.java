@@ -13,14 +13,67 @@ import core.Settings;
 
 public class CircularSpreadRouter extends ActiveRouter {
 	
+	/** identifier for the initial number of copies setting ({@value})*/ 
+	public static final String NROF_COPIES = "nrofCopies";
+	/** identifier for the binary-mode setting ({@value})*/ 
+	public static final String BINARY_MODE = "binaryMode";
+	/** SprayAndWait router's settings name space ({@value})*/ 
+	public static final String CIRCULARSPREAD_NS = "CircularSpreadRouter";
+	/** Message property key */
+	public static final String MSG_COUNT_PROPERTY = CIRCULARSPREAD_NS + "." +
+		"copies";
+	
+	protected int initialNrofCopies;
+	protected boolean isBinary;
 	
 	public CircularSpreadRouter(Settings s) {
 		super(s);
+		Settings csnwSettings = new Settings(CIRCULARSPREAD_NS);
+		initialNrofCopies = csnwSettings.getInt(NROF_COPIES);
+		isBinary = csnwSettings.getBoolean( BINARY_MODE);
 	}
 	
 	public CircularSpreadRouter(CircularSpreadRouter r) {
 		super(r);
+		this.initialNrofCopies = r.initialNrofCopies;
+		this.isBinary = r.isBinary;
 	}
+	
+	@Override
+	public int receiveMessage(Message m, DTNHost from) {
+		return super.receiveMessage(m, from);
+	}
+	
+	@Override
+	public Message messageTransferred(String id, DTNHost from) {
+		Message msg = super.messageTransferred(id, from);
+		Integer nrofCopies = (Integer)msg.getProperty(MSG_COUNT_PROPERTY);
+		
+		assert nrofCopies != null : "Not a CSnW message: " + msg;
+		
+		if (isBinary) {
+			/* in binary S'n'W the receiving node gets ceil(n/2) copies */
+			nrofCopies = (int)Math.ceil(nrofCopies/2.0);
+		}
+		else {
+			/* in standard S'n'W the receiving node gets only single copy */
+			nrofCopies = 1;
+		}
+		
+		msg.updateProperty(MSG_COUNT_PROPERTY, nrofCopies);
+		return msg;
+	}
+	
+	@Override 
+	public boolean createNewMessage(Message msg) {
+		makeRoomForNewMessage(msg.getSize());
+
+		msg.setTtl(this.msgTtl);
+		msg.addProperty(MSG_COUNT_PROPERTY, new Integer(initialNrofCopies));
+		addToMessages(msg, true);
+		return true;
+	}
+	
 	
 	@Override
 	public void update() {
@@ -34,24 +87,29 @@ public class CircularSpreadRouter extends ActiveRouter {
 			return; // started a transfer, don't try others (yet)
 		}
 		
-		// then try any/all message to any/all connection
-		this.trySpreadingMessagesInConnections();
+		/* create a list of SAWMessages that have copies left to distribute */
+		@SuppressWarnings(value = "unchecked")
+		List<Message> copiesLeft = sortByQueueMode(getMessagesWithCopiesLeft());
+		
+		if (copiesLeft.size() > 0) {
+			/* try to send those messages */
+			List<Connection> connections = getConnections();
+			trySpreadingMessagesInConnections(connections.size(), connections, copiesLeft);
+		}
 	}
 	
 	
-	protected Connection trySpreadingMessagesInConnections(){
-		List<Connection> connections = getConnections();
+	protected Connection trySpreadingMessagesInConnections(int count, List<Connection> connections, List<Message> copiesLeft){
+		
 		if (connections.size() == 0 || this.getNrofMessages() == 0) {
 			return null;
 		}
-
-		List<Message> messages = 
-			new ArrayList<Message>(this.getMessageCollection());
-		this.sortByQueueMode(messages);
-		
-		List<Connection> spreadingConnections = filterConnections(connections, connections.size());
-		
-		return tryMessagesToConnections(messages, spreadingConnections);
+		if(count > 0){
+			List<Connection> spreadingConnections = filterConnections(connections, count);
+			return tryMessagesToConnections(copiesLeft, spreadingConnections);
+		} else {
+			return tryMessagesToConnections(copiesLeft, connections);
+		}
 	}
 		
 	
@@ -112,6 +170,26 @@ public class CircularSpreadRouter extends ActiveRouter {
 	@Override
 	public CircularSpreadRouter replicate() {
 		return new CircularSpreadRouter(this);
+	}
+	
+	/**
+	 * Creates and returns a list of messages this router is currently
+	 * carrying and still has copies left to distribute (nrof copies > 1).
+	 * @return A list of messages that have copies left
+	 */
+	protected List<Message> getMessagesWithCopiesLeft() {
+		List<Message> list = new ArrayList<Message>();
+
+		for (Message m : getMessageCollection()) {
+			Integer nrofCopies = (Integer)m.getProperty(MSG_COUNT_PROPERTY);
+			assert nrofCopies != null : "SnW message " + m + " didn't have " + 
+				"nrof copies property!";
+			if (nrofCopies > 1) {
+				list.add(m);
+			}
+		}
+		
+		return list;
 	}
 
 }

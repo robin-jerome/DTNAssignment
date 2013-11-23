@@ -1,11 +1,10 @@
 package routing;
 
 import java.util.ArrayList;
-import java.util.Iterator;
+import java.util.LinkedList;
 import java.util.List;
-
-import movement.Path;
-
+import java.util.Map;
+import java.util.TreeMap;
 import core.Connection;
 import core.Coord;
 import core.DTNHost;
@@ -50,31 +49,50 @@ public class CircularSpreadRouter extends ActiveRouter {
 			new ArrayList<Message>(this.getMessageCollection());
 		this.sortByQueueMode(messages);
 		
-		List<Connection> spreadingConnections = filterConnections(connections);
+		List<Connection> spreadingConnections = filterConnections(connections, connections.size());
 		
 		return tryMessagesToConnections(messages, spreadingConnections);
 	}
 		
 	
-	private List<Connection> filterConnections(List<Connection> connections){
+	private List<Connection> filterConnections(List<Connection> connections, int requiredConnections){
 		double selfDir = getDirectionofHost(getHost());
+		List<Connection> filteredConnections = new LinkedList<Connection>();
+		Map<Double, Connection> directionConnectionMap = new TreeMap<Double, Connection>();
 		
 		for(Connection conn : connections){
 			double peerDir = getDirectionofHost(conn.getOtherNode(getHost()));
-			double directionDeviation = Math.abs(selfDir-peerDir);
-			
+			double directionDeviation = Double.valueOf(Math.abs(selfDir-peerDir));
+			directionConnectionMap.put(directionDeviation, conn);
 		}
-
-		// return a subset of collections
-		return connections;
+		
+		int interval = connections.size()/requiredConnections;
+		int count = 0;
+		for(Connection conn : directionConnectionMap.values()) {
+			count ++;
+			if(count%interval == 0){
+				filteredConnections.add(conn);
+			}
+		}
+		
+		if(filteredConnections.isEmpty() && !connections.isEmpty()){
+			return connections;
+		} else {
+			// return a subset of collections
+			return filteredConnections;
+		}
+		
+		
 	}
 	
 	private double getDirectionofHost(DTNHost host) {
-		Coord selfLoc = host.getLocation();
-		Coord nextLoc = host.getPath().hasNext() == true ? host.getPath().getNextWaypoint() : null;
 		double nodeDir = 0d;
-		if(null != nextLoc) {
-			nodeDir =  getDirection(selfLoc, nextLoc);
+		if(null != host.getPath()) {
+			Coord selfLoc = host.getLocation();
+			Coord nextLoc = host.getPath().hasNext() == true ? host.getPath().getNextWaypoint() : null;
+			if(null != nextLoc){
+				nodeDir =  getDirection(selfLoc, nextLoc);
+			}
 		}
 		return nodeDir;
 	}

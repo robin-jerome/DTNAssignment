@@ -263,10 +263,10 @@ public class CircularSpreadRouter extends ActiveRouter {
 			for(Directions dir: directions){
 				if(messageDirections.get(dir.id).booleanValue() == false){
 					list.add(m);
-					System.out.println("Message has not been sent in this direction yet,Will be sent now: "+dir);
+//					System.out.println("Message has not been sent in this direction yet,Will be sent now: "+dir);
 					break;
 				} else {
-					System.out.println("Message already sent in this direction - Not sent again");
+//					System.out.println("Message already sent in this direction - Not sent again");
 				}
 			}
 		}

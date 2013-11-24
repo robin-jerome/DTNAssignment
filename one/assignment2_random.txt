@@ -3,7 +3,7 @@
 #
 
 ## Scenario settings
-Scenario.name = plain_area_scenario-Circular-%%Events1.interval%%-seed-%%MovementModel.rngSeed%%
+Scenario.name = plain_area_scenario-Circular-coeff-%%CircularSpreadRouter.directionCoefficient%%-%%Events1.interval%%-seed-%%MovementModel.rngSeed%%
 Scenario.simulateConnections = true
 Scenario.updateInterval = 0.1
 # 86400s == 24h
@@ -62,7 +62,7 @@ Group.nrofHosts = 50
 
 CircularSpreadRouter.nrofCopies = 6
 CircularSpreadRouter.binaryMode = true
-CircularSpreadRouter.directionCoefficient = 8
+CircularSpreadRouter.directionCoefficient = 6
 
 ## Message creation parameters 
 # How many event generators

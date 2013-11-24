@@ -1,0 +1,20 @@
+Message stats for scenario plain_area_scenario-Circular-coeff-4-10-seed-1
+sim_time: 86400.0000
+created: 8640
+started: 13888
+relayed: 9719
+aborted: 4169
+dropped: 13273
+removed: 0
+delivered: 3103
+delivery_prob: 0.3591
+response_prob: 0.0000
+overhead_ratio: 2.1321
+latency_avg: 7341.0550
+latency_med: 6583.1000
+hopcount_avg: 1.4683
+hopcount_med: 1
+buffertime_avg: 11143.7248
+buffertime_med: 10945.3000
+rtt_avg: NaN
+rtt_med: NaN

@@ -27,7 +27,7 @@ public class CircularSpreadRouter extends ActiveRouter {
 	/** Message property key */
 	public static final String MSG_COUNT_PROPERTY = CIRCULARSPREAD_NS + "." +
 		"copies";
-	public static final String MSG_SENT_DIRECTIONS = "MSG_SENT_DIRECTIONS";
+	public static final String MSG_SENT_DIRECTIONS = "sentDirections";
 	
 	protected int initialNrofCopies;
 	protected boolean isBinary;
@@ -148,8 +148,8 @@ public class CircularSpreadRouter extends ActiveRouter {
 		
 		@SuppressWarnings(value = "unchecked")
 		List<Message> copiesToSpread = sortByQueueMode(getMessagesWithCopiesLeftNotTravelledInDirections(uniqueDirections));
+		
 		if (copiesToSpread.size() > 0) {
-			/* try to send those messages */
 			trySpreadingMessagesInConnections(connections, copiesToSpread);
 		}
 	}
@@ -263,6 +263,7 @@ public class CircularSpreadRouter extends ActiveRouter {
 			for(Directions dir: directions){
 				if(messageDirections.get(dir.id).booleanValue() == false){
 					list.add(m);
+					System.out.println("Message has not been sent in this direction yet,Will be sent now: "+dir);
 					break;
 				} else {
 					System.out.println("Message already sent in this direction - Not sent again");
@@ -300,6 +301,11 @@ public class CircularSpreadRouter extends ActiveRouter {
 			nrofCopies--;
 		}
 		msg.updateProperty(MSG_COUNT_PROPERTY, nrofCopies);
+		
+		Map<Integer, Boolean> messageDirections = (HashMap<Integer, Boolean>)msg.getProperty(MSG_SENT_DIRECTIONS);
+		Directions newDir = getDirectionFromRadian(getDirectionofHost(con.getOtherNode(getHost())));
+		messageDirections.put(newDir.id, Boolean.TRUE);
+		msg.updateProperty(MSG_SENT_DIRECTIONS, messageDirections);
 	}
 	
 }

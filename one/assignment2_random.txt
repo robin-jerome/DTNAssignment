@@ -3,7 +3,7 @@
 #
 
 ## Scenario settings
-Scenario.name = plain_area_scenario-%%Events1.interval%%-seed-%%MovementModel.rngSeed%%
+Scenario.name = plain_area_scenario-Circular-%%Events1.interval%%-seed-%%MovementModel.rngSeed%%
 Scenario.simulateConnections = true
 Scenario.updateInterval = 0.1
 # 86400s == 24h
@@ -48,7 +48,7 @@ Scenario.nrofHostGroups = 1
 
 # Common settings for all groups
 Group.movementModel = GaussMarkovModel
-Group.router = DirectDeliveryRouter
+Group.router = CircularSpreadRouter
 Group.bufferSize = 30M
 Group.waitTime = 0, 120
 Group.nrofInterfaces = 1
@@ -60,6 +60,9 @@ Group.msgTtl = 1440
 
 Group.nrofHosts = 50
 
+CircularSpreadRouter.nrofCopies = 6
+CircularSpreadRouter.binaryMode = true
+
 ## Message creation parameters 
 # How many event generators
 Events.nrof = 1
@@ -67,7 +70,7 @@ Events.nrof = 1
 Events1.class = MessageEventGenerator
 # (following settings are specific for the MessageEventGenerator class)
 # Creation interval in seconds
-Events1.interval = [70;100]
+Events1.interval = [5;10]
 # Message sizes (500kB - 1MB)
 Events1.size = 500k,1M
 # range of message source/destination addresses

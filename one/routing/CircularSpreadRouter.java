@@ -116,36 +116,38 @@ public class CircularSpreadRouter extends ActiveRouter {
 		
 	
 	private List<Connection> filterConnections(List<Connection> connections){
-		DTNHost host = getHost();
+		//DTNHost host = getHost();
+		double split = 5;
 		double selfDir = getDirectionofHost(getHost());
 		List<Connection> filteredConnections = new LinkedList<Connection>();
 		Map<Double, Connection> directionConnectionMap = new TreeMap<Double, Connection>();
 		
 		for(Connection conn : connections){
 			double peerDir = getDirectionofHost(conn.getOtherNode(getHost()));
+			if (peerDir == -1 || selfDir == -1)
+				continue;
 			double directionDeviation = Double.valueOf(Math.abs(selfDir-peerDir));
-			System.out.println(directionDeviation);
-			directionConnectionMap.put(directionDeviation, conn);
+			if (directionDeviation > (Math.PI / split)) {
+				filteredConnections.add(conn);
+			}
 		}
+		return filteredConnections;
 		
-		int interval = connections.size()/1;
-		int count = 0;
+	/*	int interval = connections.size()/1;
+		double count = 0;
 		for(Connection conn : directionConnectionMap.values()) {
-			count ++;
+			count++;
 			if(count%interval == 0){
 				filteredConnections.add(conn);
 			}
 		}
-		
-
-		
 		if(filteredConnections.isEmpty() && !connections.isEmpty()){
 			return connections;
 		} else {
 			// return a subset of collections
 			return filteredConnections;
 		}
-		
+	*/	
 		
 	}
 	
@@ -155,14 +157,21 @@ public class CircularSpreadRouter extends ActiveRouter {
 			Coord nextLoc = host.getPath().getCoords().get(1);
 			return getDirection(selfLoc, nextLoc);
 		} else {
-			System.err.println("Direction of host cannot be found");
-			return 0d;
+			//System.err.println("Direction of host cannot be found");
+			return -1d;
 		}
 		
 	}
 
 	private double getDirection(Coord selfLoc, Coord nextLoc) {
-		return (Math.atan2((nextLoc.getY()-selfLoc.getY()), (nextLoc.getX()-selfLoc.getX())));
+		double rise = nextLoc.getY()-selfLoc.getY();
+		double run = nextLoc.getX()-selfLoc.getX();
+		double radian_direction = Math.atan2(rise, run);
+		
+		if (rise < 0) {
+			return (2 * Math.PI + radian_direction);   // For any downward direction, the radian_direction is < 0,
+		}											   // hence we add it to 360 to get mean direction in radian
+		return (radian_direction);
 	}
 
 	@Override
@@ -189,5 +198,33 @@ public class CircularSpreadRouter extends ActiveRouter {
 		
 		return list;
 	}
+	/**
+	 * Called just before a transfer is finalized (by 
+	 * {@link ActiveRouter#update()}).
+	 * Reduces the number of copies we have left for a message. 
+	 * In binary Spray and Wait, sending host is left with floor(n/2) copies,
+	 * but in standard mode, nrof copies left is reduced by one. 
+	 */
+	@Override
+	protected void transferDone(Connection con) {
+		Integer nrofCopies;
+		String msgId = con.getMessage().getId();
+		/* get this router's copy of the message */
+		Message msg = getMessage(msgId);
 
+		if (msg == null) { // message has been dropped from the buffer after..
+			return; // ..start of transfer -> no need to reduce amount of copies
+		}
+		
+		/* reduce the amount of copies left */
+		nrofCopies = (Integer)msg.getProperty(MSG_COUNT_PROPERTY);
+		if (isBinary) { 
+			nrofCopies /= 2;
+		}
+		else {
+			nrofCopies--;
+		}
+		msg.updateProperty(MSG_COUNT_PROPERTY, nrofCopies);
+	}
+	
 }

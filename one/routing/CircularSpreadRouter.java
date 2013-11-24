@@ -1,9 +1,12 @@
 package routing;
 
 import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.HashSet;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.TreeMap;
 import core.Connection;
 import core.Coord;
@@ -24,16 +27,27 @@ public class CircularSpreadRouter extends ActiveRouter {
 	/** Message property key */
 	public static final String MSG_COUNT_PROPERTY = CIRCULARSPREAD_NS + "." +
 		"copies";
+	public static final String MSG_SENT_DIRECTIONS = "MSG_SENT_DIRECTIONS";
 	
 	protected int initialNrofCopies;
 	protected boolean isBinary;
 	protected int directionCoefficient;
 	
+	public static enum Directions {
+		DIR1(1), DIR2(2), DIR3(3), DIR4(4), DIR5(5), DIR6(6), DIR7(7), DIR8(8);
+		
+		int id;
+		Directions(int id) {
+		    this.id = id;
+		}
+		
+	}
+	
 	public CircularSpreadRouter(Settings s) {
 		super(s);
 		Settings csnwSettings = new Settings(CIRCULARSPREAD_NS);
 		initialNrofCopies = csnwSettings.getInt(NROF_COPIES);
-//		directionCoefficient = csnwSettings.getInt(DIRECTION_COEFF);
+		directionCoefficient = csnwSettings.getInt(DIRECTION_COEFF);
 		isBinary = csnwSettings.getBoolean(BINARY_MODE);
 	}
 	
@@ -75,10 +89,44 @@ public class CircularSpreadRouter extends ActiveRouter {
 
 		msg.setTtl(this.msgTtl);
 		msg.addProperty(MSG_COUNT_PROPERTY, new Integer(initialNrofCopies));
+		msg.addProperty(MSG_SENT_DIRECTIONS, getEmptyDirectionHashMap());
 		addToMessages(msg, true);
 		return true;
 	}
 	
+	private Map<Integer, Boolean> getEmptyDirectionHashMap() {
+		Map<Integer, Boolean> map = new HashMap<Integer, Boolean>();
+		map.put(Directions.DIR1.id, Boolean.FALSE);
+		map.put(Directions.DIR2.id, Boolean.FALSE);
+		map.put(Directions.DIR3.id, Boolean.FALSE);
+		map.put(Directions.DIR4.id, Boolean.FALSE);
+		map.put(Directions.DIR5.id, Boolean.FALSE);
+		map.put(Directions.DIR6.id, Boolean.FALSE);
+		map.put(Directions.DIR7.id, Boolean.FALSE);
+		map.put(Directions.DIR8.id, Boolean.FALSE);
+		return map;
+	}
+	
+	private Directions getDirectionFromRadian(double radian){
+		double maxRadian = 2*Math.PI;
+		if(maxRadian - radian < Math.PI/8){
+			return Directions.DIR1;
+		} else if(maxRadian - radian < Math.PI/4){
+			return Directions.DIR2;
+		} else if(maxRadian - radian < Math.PI/2){
+			return Directions.DIR3;
+		} else if(maxRadian - radian < 3*Math.PI/4){
+			return Directions.DIR4;
+		} else if(maxRadian - radian < Math.PI){
+			return Directions.DIR5;
+		} else if(maxRadian - radian < 5*Math.PI/4){
+		 	return Directions.DIR6;
+		} else if(maxRadian - radian < 3*Math.PI/2){
+		 	return Directions.DIR7;
+		} else {
+		 	return Directions.DIR7;
+		}
+	}
 	
 	@Override
 	public void update() {
@@ -99,6 +147,12 @@ public class CircularSpreadRouter extends ActiveRouter {
 		if (copiesLeft.size() > 0) {
 			/* try to send those messages */
 			List<Connection> connections = getConnections();
+			Set<Directions> uniqueDirections = new HashSet<Directions>();
+			
+			for(Connection conn: connections){
+				uniqueDirections.add(getDirectionFromRadian(getDirectionofHost(conn.getOtherNode(getHost()))));
+			}
+			
 			trySpreadingMessagesInConnections(connections, copiesLeft);
 		}
 	}
@@ -116,19 +170,27 @@ public class CircularSpreadRouter extends ActiveRouter {
 		
 	
 	private List<Connection> filterConnections(List<Connection> connections){
-		//DTNHost host = getHost();
-		double split = 5;
+		
 		double selfDir = getDirectionofHost(getHost());
 		List<Connection> filteredConnections = new LinkedList<Connection>();
-		Map<Double, Connection> directionConnectionMap = new TreeMap<Double, Connection>();
+//		Map<Double, Connection> directionConnectionMap = new TreeMap<Double, Connection>();
 		
 		for(Connection conn : connections){
 			double peerDir = getDirectionofHost(conn.getOtherNode(getHost()));
 			if (peerDir == -1 || selfDir == -1)
 				continue;
 			double directionDeviation = Double.valueOf(Math.abs(selfDir-peerDir));
-			if (directionDeviation > (Math.PI / split)) {
+			
+			System.out.println((directionDeviation));
+			
+			if (directionDeviation > (Math.PI / directionCoefficient)) {
+//				System.out.println("Passed message to node with different direction");
 				filteredConnections.add(conn);
+			} else if(getHost().getPath().getSpeed() < conn.getOtherNode(getHost()).getPath().getSpeed()) {
+//				System.out.println("Passed message to node with higher speed");
+				filteredConnections.add(conn);
+			} else {
+//				System.out.println("Message not passed to node");
 			}
 		}
 		return filteredConnections;
@@ -157,7 +219,6 @@ public class CircularSpreadRouter extends ActiveRouter {
 			Coord nextLoc = host.getPath().getCoords().get(1);
 			return getDirection(selfLoc, nextLoc);
 		} else {
-			//System.err.println("Direction of host cannot be found");
 			return -1d;
 		}
 		
@@ -198,6 +259,29 @@ public class CircularSpreadRouter extends ActiveRouter {
 		
 		return list;
 	}
+	
+	/**
+	 * Creates and returns a list of messages this router is currently
+	 * carrying and still has copies left to distribute (nrof copies > 1).
+	 * @return A list of messages that have copies left
+	 */
+	protected List<Message> getMessagesWithCopiesLeftNotTravelledInDirections(Set<Directions> directions) {
+		List<Message> list = new ArrayList<Message>();
+		for (Message m : getMessagesWithCopiesLeft()) {
+			Map<Integer, Boolean> messageDirections = (HashMap<Integer, Boolean>)m.getProperty(MSG_SENT_DIRECTIONS);
+			for(Directions dir: directions){
+				if(messageDirections.get(dir.id).booleanValue() == false){
+					list.add(m);
+					break;
+				} else {
+					System.out.println("Message already sent in this direction - Not sent again");
+				}
+			}
+		}
+		return list;
+	}
+	
+	
 	/**
 	 * Called just before a transfer is finalized (by 
 	 * {@link ActiveRouter#update()}).

@@ -62,6 +62,7 @@ Group.nrofHosts = 50
 
 CircularSpreadRouter.nrofCopies = 6
 CircularSpreadRouter.binaryMode = true
+CircularSpreadRouter.directionCoefficient = 8
 
 ## Message creation parameters 
 # How many event generators

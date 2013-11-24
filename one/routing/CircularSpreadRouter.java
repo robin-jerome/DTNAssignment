@@ -178,8 +178,6 @@ public class CircularSpreadRouter extends ActiveRouter {
 				continue;
 			double directionDeviation = Double.valueOf(Math.abs(selfDir-peerDir));
 			
-			System.out.println((directionDeviation));
-			
 			if (directionDeviation > (Math.PI / directionCoefficient)) {
 //				System.out.println("Passed message to node with different direction");
 				filteredConnections.add(conn);

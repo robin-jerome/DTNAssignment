@@ -140,20 +140,17 @@ public class CircularSpreadRouter extends ActiveRouter {
 			return; // started a transfer, don't try others (yet)
 		}
 		
-		/* create a list of SAWMessages that have copies left to distribute */
-		@SuppressWarnings(value = "unchecked")
-		List<Message> copiesLeft = sortByQueueMode(getMessagesWithCopiesLeft());
+		Set<Directions> uniqueDirections = new HashSet<Directions>();
+		List<Connection> connections = getConnections();
+		for(Connection conn: connections){
+			uniqueDirections.add(getDirectionFromRadian(getDirectionofHost(conn.getOtherNode(getHost()))));
+		}
 		
-		if (copiesLeft.size() > 0) {
+		@SuppressWarnings(value = "unchecked")
+		List<Message> copiesToSpread = sortByQueueMode(getMessagesWithCopiesLeftNotTravelledInDirections(uniqueDirections));
+		if (copiesToSpread.size() > 0) {
 			/* try to send those messages */
-			List<Connection> connections = getConnections();
-			Set<Directions> uniqueDirections = new HashSet<Directions>();
-			
-			for(Connection conn: connections){
-				uniqueDirections.add(getDirectionFromRadian(getDirectionofHost(conn.getOtherNode(getHost()))));
-			}
-			
-			trySpreadingMessagesInConnections(connections, copiesLeft);
+			trySpreadingMessagesInConnections(connections, copiesToSpread);
 		}
 	}
 	
@@ -260,11 +257,7 @@ public class CircularSpreadRouter extends ActiveRouter {
 		return list;
 	}
 	
-	/**
-	 * Creates and returns a list of messages this router is currently
-	 * carrying and still has copies left to distribute (nrof copies > 1).
-	 * @return A list of messages that have copies left
-	 */
+	
 	protected List<Message> getMessagesWithCopiesLeftNotTravelledInDirections(Set<Directions> directions) {
 		List<Message> list = new ArrayList<Message>();
 		for (Message m : getMessagesWithCopiesLeft()) {

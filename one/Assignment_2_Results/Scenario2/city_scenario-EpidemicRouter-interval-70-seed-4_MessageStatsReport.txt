@@ -1,0 +1,20 @@
+Message stats for scenario city_scenario-EpidemicRouter-interval-70-seed-4
+sim_time: 86400.0000
+created: 1234
+started: 328261
+relayed: 265366
+aborted: 62888
+dropped: 245367
+removed: 0
+delivered: 890
+delivery_prob: 0.7212
+response_prob: 0.0000
+overhead_ratio: 297.1640
+latency_avg: 4579.9974
+latency_med: 3835.5000
+hopcount_avg: 3.7371
+hopcount_med: 4
+buffertime_avg: 2167.4369
+buffertime_med: 1867.0000
+rtt_avg: NaN
+rtt_med: NaN

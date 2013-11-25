@@ -1,0 +1,20 @@
+Message stats for scenario city_scenario-SprayAndWaitRouter-interval-10-seed-4
+sim_time: 86400.0000
+created: 8640
+started: 64005
+relayed: 46637
+aborted: 17366
+dropped: 39280
+removed: 0
+delivered: 4363
+delivery_prob: 0.5050
+response_prob: 0.0000
+overhead_ratio: 9.6892
+latency_avg: 5774.8949
+latency_med: 2471.6000
+hopcount_avg: 2.5127
+hopcount_med: 2
+buffertime_avg: 9146.9307
+buffertime_med: 8865.2000
+rtt_avg: NaN
+rtt_med: NaN

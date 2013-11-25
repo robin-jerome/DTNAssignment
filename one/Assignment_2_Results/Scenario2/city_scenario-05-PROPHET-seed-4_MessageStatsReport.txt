@@ -1,0 +1,20 @@
+Message stats for scenario city_scenario-5-seed-4
+sim_time: 86400.0000
+created: 17280
+started: 320216
+relayed: 257763
+aborted: 62444
+dropped: 241067
+removed: 0
+delivered: 5862
+delivery_prob: 0.3392
+response_prob: 0.0000
+overhead_ratio: 42.9719
+latency_avg: 5913.5915
+latency_med: 3349.1000
+hopcount_avg: 2.3118
+hopcount_med: 2
+buffertime_avg: 4330.0349
+buffertime_med: 1940.4000
+rtt_avg: NaN
+rtt_med: NaN

@@ -48,7 +48,11 @@ Scenario.nrofHostGroups = 8
 
 # Common settings for all groups
 Group.movementModel = ShortestPathMapBasedMovement
+<<<<<<< Updated upstream
 Group.router = CityRouter
+=======
+Group.router = DirectDeliveryRouter
+>>>>>>> Stashed changes
 Group.bufferSize = 30M
 Group.waitTime = 0, 120
 Group.nrofInterfaces = 1

@@ -171,7 +171,7 @@ Report.report1 = MessageStatsReport
 ProphetRouter.secondsInTimeUnit = 30
 SprayAndWaitRouter.nrofCopies = 6
 SprayAndWaitRouter.binaryMode = true
-CityRouter.nrofCopies = 32
+CityRouter.nrofCopies = 6
 CityRouter.binaryMode = true
 CityRouter.bufferSizeCoefficient = 1
 

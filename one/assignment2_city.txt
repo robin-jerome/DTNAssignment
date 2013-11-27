@@ -48,7 +48,7 @@ Scenario.nrofHostGroups = 8
 
 # Common settings for all groups
 Group.movementModel = ShortestPathMapBasedMovement
-Group.router = EpidemicRouter
+Group.router = CityRouter
 Group.bufferSize = 30M
 Group.waitTime = 0, 120
 Group.nrofInterfaces = 1
@@ -127,7 +127,7 @@ Events.nrof = 1
 Events1.class = MessageEventGenerator
 # (following settings are specific for the MessageEventGenerator class)
 # Creation interval in seconds
-Events1.interval = [70;100]
+Events1.interval = [5;10]
 # Message sizes (500kB - 1MB)
 Events1.size = 500k,1M
 # range of message source/destination addresses
@@ -171,6 +171,9 @@ Report.report1 = MessageStatsReport
 ProphetRouter.secondsInTimeUnit = 30
 SprayAndWaitRouter.nrofCopies = 6
 SprayAndWaitRouter.binaryMode = true
+CityRouter.nrofCopies = 6
+CityRouter.binaryMode = true
+CityRouter.bufferSizeCoefficient = 1
 
 ## Optimization settings -- these affect the speed of the simulation
 ## see World class for details.

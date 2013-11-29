@@ -1,0 +1,20 @@
+Message stats for scenario city_scenario-CityRouter-interval-30-seed-4
+sim_time: 86400.0000
+created: 2880
+started: 73186
+relayed: 53335
+aborted: 19848
+dropped: 31330
+removed: 0
+delivered: 2009
+delivery_prob: 0.6976
+response_prob: 0.0000
+overhead_ratio: 25.5480
+latency_avg: 7060.9452
+latency_med: 4812.7000
+hopcount_avg: 2.8646
+hopcount_med: 3
+buffertime_avg: 13739.0627
+buffertime_med: 9657.3000
+rtt_avg: NaN
+rtt_med: NaN

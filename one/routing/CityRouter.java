@@ -99,9 +99,6 @@ public class CityRouter extends ActiveRouter {
 			// Dont add yourself and also do not add elements already in the first hop strata
 			if((dtnHost.getAddress()!= getHost().getAddress()) && !isNodePresentInAnyStrata(dtnHost)){
 				this.multiHopStrata.add(dtnHost);
-				if(isDataMule(dtnHost)){
-					dataMules.add(dtnHost);
-				}
 			}
 		}
 	}
@@ -190,8 +187,7 @@ public class CityRouter extends ActiveRouter {
 			DTNHost other = con.getOtherNode(getHost());
 			DTNHost self = getHost();
 			CityRouter othRouter = (CityRouter)other.getRouter();
-			CityRouter selfRouter = (CityRouter)getHost().getRouter();
-			
+	
 			if (othRouter.isTransferring()) {
 				continue; // skip hosts that are transferring
 			}

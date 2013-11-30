@@ -16,13 +16,15 @@ import core.Settings;
 
 public class CircularSpreadRouter extends ActiveRouter {
 	
-	/** identifier for the initial number of copies setting ({@value})*/ 
+	/** String identifier to determine the # of copies to begin the message transfer with ({@value})*/ 
 	public static final String NROF_COPIES = "nrofCopies";
-	/** identifier for the initial number of copies setting ({@value})*/ 
+	/** String identifier for determining the total number inter-cardinal directions ({@value})
+	 *  The total cardinal direction is limited to a max of 8
+	 * */ 
 	public static final String DIRECTION_COEFF = "directionCoefficient";
-	/** identifier for the binary-mode setting ({@value})*/ 
+	/** identifier for the binary-mode setting, similar to spray and wait ({@value})*/ 
 	public static final String BINARY_MODE = "binaryMode";
-	/** SprayAndWait router's settings name space ({@value})*/ 
+	/** Circular spread router namespace ({@value})*/ 
 	public static final String CIRCULARSPREAD_NS = "CircularSpreadRouter";
 	/** Message property key */
 	public static final String MSG_COUNT_PROPERTY = CIRCULARSPREAD_NS + "." +
@@ -33,6 +35,7 @@ public class CircularSpreadRouter extends ActiveRouter {
 	protected boolean isBinary;
 	protected int directionCoefficient;
 	
+	// total cardinal directions supported for optimal performance
 	public static enum Directions {
 		DIR1(1), DIR2(2), DIR3(3), DIR4(4), DIR5(5), DIR6(6), DIR7(7), DIR8(8);
 		
@@ -68,14 +71,16 @@ public class CircularSpreadRouter extends ActiveRouter {
 		Message msg = super.messageTransferred(id, from);
 		Integer nrofCopies = (Integer)msg.getProperty(MSG_COUNT_PROPERTY);
 		
-		assert nrofCopies != null : "Not a CSnW message: " + msg;
+		assert nrofCopies != null : "Not a CircularSpread message: " + msg;
 		
 		if (isBinary) {
-			/* in binary S'n'W the receiving node gets ceil(n/2) copies */
+			/* If binary mode is enabled, similar to binary S'n'W 
+			 * the receiving node gets ceil(n/2) copies of the message
+			 */
 			nrofCopies = (int)Math.ceil(nrofCopies/2.0);
 		}
 		else {
-			/* in standard S'n'W the receiving node gets only single copy */
+			/* If binary mode is false, then give only one copy to the next node*/
 			nrofCopies = 1;
 		}
 		
@@ -94,6 +99,7 @@ public class CircularSpreadRouter extends ActiveRouter {
 		return true;
 	}
 	
+
 	private Map<Integer, Boolean> getEmptyDirectionHashMap() {
 		Map<Integer, Boolean> map = new HashMap<Integer, Boolean>();
 		map.put(Directions.DIR1.id, Boolean.FALSE);
@@ -106,27 +112,82 @@ public class CircularSpreadRouter extends ActiveRouter {
 		map.put(Directions.DIR8.id, Boolean.FALSE);
 		return map;
 	}
-	
+
+	/** 
+	 * From the direction of travel of the node (in radians), it determines the
+	 * cardinal direction of the node. The total number of cardinal directions are based on the
+	 * direction coefficient
+	 * @param radian
+	 * @return returns the Direction ENUM
+	 */
 	private Directions getDirectionFromRadian(double radian){
-		double maxRadian = 2*Math.PI;
-		if(maxRadian - radian < Math.PI/8){
-			return Directions.DIR1;
-		} else if(maxRadian - radian < Math.PI/4){
-			return Directions.DIR2;
-		} else if(maxRadian - radian < Math.PI/2){
-			return Directions.DIR3;
-		} else if(maxRadian - radian < 3*Math.PI/4){
-			return Directions.DIR4;
-		} else if(maxRadian - radian < Math.PI){
-			return Directions.DIR5;
-		} else if(maxRadian - radian < 5*Math.PI/4){
-		 	return Directions.DIR6;
-		} else if(maxRadian - radian < 3*Math.PI/2){
-		 	return Directions.DIR7;
-		} else {
-		 	return Directions.DIR7;
+		double cardinalDirectionsplits = 2 * Math.PI / this.directionCoefficient;
+		int i;
+		for (i = 1; i <= this.directionCoefficient; i++) {
+			if (radian <= cardinalDirectionsplits * i) {
+				break;
+			}
+		}
+		switch (i) {
+		case 0: return Directions.DIR1;
+		case 1: return Directions.DIR2;
+		case 2: return Directions.DIR3;
+		case 3: return Directions.DIR4;
+		case 4: return Directions.DIR5;
+		case 5: return Directions.DIR6;
+		case 6: return Directions.DIR7;
+		case 7: return Directions.DIR8;
+		default: return Directions.DIR8;
 		}
 	}
+
+/*	
+ * This function was an attempt to make the message see direction relative to host node.
+ * But this totally digresses from the actual design of the alogoithm
+ * 
+	private Directions getDirectionFromRadian(double referenceRadian, double radian){
+		double cardinalDirectionsplits = Math.PI / this.directionCoefficient;
+		double deviation = 0, newRacelimit = 0;
+		int i = 0, flag = 0;
+		for (i = 0; i < this.directionCoefficient; i++) {
+			deviation = Math.abs(referenceRadian - radian);
+			if (referenceRadian > ((2 * Math.PI) - cardinalDirectionsplits)) {
+				newRacelimit = cardinalDirectionsplits - (2 * Math.PI - referenceRadian);
+				if (radian <= newRacelimit) {
+					break;
+				}
+				flag = 1;
+			}
+			if (referenceRadian < cardinalDirectionsplits) {
+				newRacelimit = (2 * Math.PI) - (cardinalDirectionsplits - referenceRadian);
+				if (radian >= newRacelimit) {
+					break;
+				}
+			}
+			if (deviation <= cardinalDirectionsplits) {
+					break;
+			}
+			if (flag == 1) {
+				referenceRadian = newRacelimit + cardinalDirectionsplits;
+				flag = 0;
+			} else {
+				referenceRadian += (2 * cardinalDirectionsplits);
+			}
+		}
+		
+		switch (i) {
+		case 0: return Directions.DIR1;
+		case 1: return Directions.DIR2;
+		case 2: return Directions.DIR3;
+		case 3: return Directions.DIR4;
+		case 4: return Directions.DIR5;
+		case 5: return Directions.DIR6;
+		case 6: return Directions.DIR7;
+		case 7: return Directions.DIR8;
+		default: return Directions.DIR8;
+		}
+	}
+	*/
 	
 	@Override
 	public void update() {
@@ -143,6 +204,7 @@ public class CircularSpreadRouter extends ActiveRouter {
 		Set<Directions> uniqueDirections = new HashSet<Directions>();
 		List<Connection> connections = getConnections();
 		for(Connection conn: connections){
+			// Get the absolute direction of the host.
 			uniqueDirections.add(getDirectionFromRadian(getDirectionofHost(conn.getOtherNode(getHost()))));
 		}
 		
@@ -160,17 +222,30 @@ public class CircularSpreadRouter extends ActiveRouter {
 		if (connections.size() == 0 || this.getNrofMessages() == 0) {
 			return null;
 		}
+		// Now filter the connected nodes based on their direction relative to the actual host
+		// Only Valid connected nodes are used for spreading the message.
 		List<Connection> spreadingConnections = filterConnections(connections);
 		return tryMessagesToConnections(copiesLeft, spreadingConnections);
 		
 	}
 		
-	
+	/**
+	 * "Every node sees relative cardinal direction"
+	 * 
+	 * This function forms one of the basis of the circular spread algorithm.
+	 * Each connected node is a "valid" node only if : 
+	 * 1. The cardinal direction of the node is relatively different from the 
+	 *    direction of travel of the host it is connected to, (and) 
+	 * 2. The speed of the connected node is greater than the current speed of
+	 *    host.
+	 * 
+	 * @param connections
+	 * @return List of filtered connections which are valid
+	 */
 	private List<Connection> filterConnections(List<Connection> connections){
 		
 		double selfDir = getDirectionofHost(getHost());
 		List<Connection> filteredConnections = new LinkedList<Connection>();
-//		Map<Double, Connection> directionConnectionMap = new TreeMap<Double, Connection>();
 		
 		for(Connection conn : connections){
 			double peerDir = getDirectionofHost(conn.getOtherNode(getHost()));
@@ -179,35 +254,25 @@ public class CircularSpreadRouter extends ActiveRouter {
 			double directionDeviation = Double.valueOf(Math.abs(selfDir-peerDir));
 			
 			if (directionDeviation > (Math.PI / directionCoefficient)) {
-//				System.out.println("Passed message to node with different direction");
+				 /* Passed message to node with different relative direction */
 				filteredConnections.add(conn);
 			} else if(getHost().getPath().getSpeed() < conn.getOtherNode(getHost()).getPath().getSpeed()) {
-//				System.out.println("Passed message to node with higher speed");
+				/* Passed message to node with higher speed */
 				filteredConnections.add(conn);
 			} else {
-//				System.out.println("Message not passed to node");
+				/* Message not passed to node */
 			}
 		}
 		return filteredConnections;
 		
-	/*	int interval = connections.size()/1;
-		double count = 0;
-		for(Connection conn : directionConnectionMap.values()) {
-			count++;
-			if(count%interval == 0){
-				filteredConnections.add(conn);
-			}
-		}
-		if(filteredConnections.isEmpty() && !connections.isEmpty()){
-			return connections;
-		} else {
-			// return a subset of collections
-			return filteredConnections;
-		}
-	*/	
-		
 	}
 	
+	/**
+	 * Calculates the slope/direction (in radians) of the given host from the
+	 * current and next location.
+	 * @param host
+	 * @return the direction in radians (or) -1 (in case of error)
+	 */
 	private double getDirectionofHost(DTNHost host) {
 		if(null != host.getPath() && host.getPath().getCoords().size() == 2) {
 			Coord selfLoc = host.getPath().getCoords().get(0);
@@ -255,7 +320,17 @@ public class CircularSpreadRouter extends ActiveRouter {
 		return list;
 	}
 	
-	
+	/**
+	 * "Every Message sees absolute cardinal direction"
+	 * 
+	 * This function lays the ground work for the second concept used in this
+	 * algorithm. Every message has a direction property which allows the router
+	 * to determine if the message has already traveled in a particular direction.
+	 * If the message has already traveled in that direction then do not send the
+	 * message, else send the message in that direction.
+	 * @param directions
+	 * @return List of Messages which can be send in that direction.
+	 */
 	protected List<Message> getMessagesWithCopiesLeftNotTravelledInDirections(Set<Directions> directions) {
 		List<Message> list = new ArrayList<Message>();
 		for (Message m : getMessagesWithCopiesLeft()) {
@@ -278,8 +353,8 @@ public class CircularSpreadRouter extends ActiveRouter {
 	 * Called just before a transfer is finalized (by 
 	 * {@link ActiveRouter#update()}).
 	 * Reduces the number of copies we have left for a message. 
-	 * In binary Spray and Wait, sending host is left with floor(n/2) copies,
-	 * but in standard mode, nrof copies left is reduced by one. 
+	 * In binary mode, the sending host is left with n/2 copies but 
+	 * in standard mode, nr of copies left is reduced by one. 
 	 */
 	@Override
 	protected void transferDone(Connection con) {
@@ -303,7 +378,10 @@ public class CircularSpreadRouter extends ActiveRouter {
 		msg.updateProperty(MSG_COUNT_PROPERTY, nrofCopies);
 		
 		Map<Integer, Boolean> messageDirections = (HashMap<Integer, Boolean>)msg.getProperty(MSG_SENT_DIRECTIONS);
+		// Determine the direction in which the host is traveling 
 		Directions newDir = getDirectionFromRadian(getDirectionofHost(con.getOtherNode(getHost())));
+		// Sent the current direction to TRUE, since the message 
+		// has now been sent via this direction.
 		messageDirections.put(newDir.id, Boolean.TRUE);
 		msg.updateProperty(MSG_SENT_DIRECTIONS, messageDirections);
 	}

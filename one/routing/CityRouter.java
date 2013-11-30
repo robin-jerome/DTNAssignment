@@ -5,9 +5,11 @@
 package routing;
 
 import java.util.ArrayList;
-import java.util.Collection;
+import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.Map;
+
 import core.Connection;
 import core.DTNHost;
 import core.Message;
@@ -34,13 +36,14 @@ public class CityRouter extends ActiveRouter {
 	/** Is binary mode of operation */
 	protected boolean isBinary;
 	/** Nodes with 1 hop contact */
-	private List<DTNHost> firstHopStrata = new LinkedList<DTNHost>();
+	private Map<DTNHost, Integer> firstHopStrata = new HashMap<DTNHost, Integer>();
 	/** Nodes with 2 hop contact */
 	private List<DTNHost> multiHopStrata = new LinkedList<DTNHost>();
-	/** Nodes with 2 hop contact */
+	/** Data mule nodes */
 	private List<DTNHost> dataMules = new LinkedList<DTNHost>();
-	/** Coefficient for the buffer size variation*/
-	protected int bufferSizeCoeff;
+
+	private final int lowBufferFactor = 100;
+	private final int highBufferFactor = 2;
 	
 	/**
 	 * Constructor. Creates a new message router based on the settings in
@@ -52,7 +55,6 @@ public class CityRouter extends ActiveRouter {
 		Settings cityRouterSettings = new Settings(CITYROUTER_NS);
 		initialNrofCopies = cityRouterSettings.getInt(NROF_COPIES);
 		isBinary = cityRouterSettings.getBoolean(BINARY_MODE);
-		bufferSizeCoeff = cityRouterSettings.getInt(BUFFER_SIZE_COEFFICIENT);
 	}
 
 	/**
@@ -63,7 +65,6 @@ public class CityRouter extends ActiveRouter {
 		super(r);
 		this.initialNrofCopies = r.initialNrofCopies;
 		this.isBinary = r.isBinary;
-		this.bufferSizeCoeff = r.bufferSizeCoeff;
 	}
 	
 	
@@ -79,21 +80,44 @@ public class CityRouter extends ActiveRouter {
 		}
 	}
 
+	/**
+	 * Updates the list of first hop nodes with the newly found host.
+	 * If the new host is already present in multihop strata it is 
+	 * removed from there and added to the first hop strata.
+	 * @param host The host we just met
+	 */
 	private void addToFirstHopStrata(DTNHost host) {
 		// If host present in second hop strata remove it.
 		if(this.multiHopStrata.contains(host)){
 			this.multiHopStrata.remove(host);
 		}
 		// If host is not present in the first hop strata, then add it.
-		if(!this.firstHopStrata.contains(host)){
-			this.firstHopStrata.add(host);
+		if(!this.firstHopStrata.containsKey(host)){
+			this.firstHopStrata.put(host, 1);
+		} else {
+			int currCount = firstHopStrata.get(host);
+			this.firstHopStrata.put(host, currCount+1);
 		}
 	}
 
+	/**
+	 * Updates the list of multi-hop nodes with the newly found host.
+	 * If the new host is already present in single hop strata it is 
+	 * removed from there and added to the first hop strata.
+	 * @param host The host we just met
+	 */
 	private void addToMultiHopStrata(DTNHost host) {
 		MessageRouter otherRouter = host.getRouter();
 		assert otherRouter instanceof CityRouter : "CityRouter only works " + 
 			" with other routers of same type";
+		
+		
+		for(DTNHost dtnHost: ((CityRouter)otherRouter).getFirstHopStrata().keySet()){
+			// Dont add yourself and also do not add elements already in the first hop strata
+			if((dtnHost.getAddress()!= getHost().getAddress()) && !isNodePresentInAnyStrata(dtnHost)){
+				this.multiHopStrata.add(dtnHost);
+			}
+		}
 		
 		for(DTNHost dtnHost: ((CityRouter)otherRouter).getMultiHopStrata()){
 			// Dont add yourself and also do not add elements already in the first hop strata
@@ -101,17 +125,35 @@ public class CityRouter extends ActiveRouter {
 				this.multiHopStrata.add(dtnHost);
 			}
 		}
+		
+		for(DTNHost dtnHost: ((CityRouter)otherRouter).getDataMules()){
+			// Dont add yourself and also do not add elements already in the first hop strata
+			if((dtnHost.getAddress()!= getHost().getAddress()) && !isNodePresentInAnyStrata(dtnHost)){
+				this.multiHopStrata.add(dtnHost);
+			}
+		}
 	}
 	
+	/**
+	 *  Helper method to check if there is a history of encounter with this node 
+	 * @param host The host we just met
+	 */
 	private boolean isNodePresentInAnyStrata(DTNHost host) {
-		return (this.firstHopStrata.contains(host)||this.multiHopStrata.contains(host)||this.dataMules.contains(host));
+		return (this.firstHopStrata.containsKey(host)||this.multiHopStrata.contains(host)||this.dataMules.contains(host));
 	}
 	
+	/**
+	 *  Helper method to check if the host under context is a data mule.
+	 *  This algorithm assumes that mules have huge buffer sizes
+	 * @param host The host we just met
+	 */
 	private boolean isDataMule(DTNHost host) {
 		return ((host.getRouter().getBufferSize() == 1000000000));
 	}
 	
-	
+	/**
+	 *  Creates a new message and also sets initial number of copies.
+	 */
 	@Override 
 	public boolean createNewMessage(Message msg) {
 		makeRoomForNewMessage(msg.getSize());
@@ -125,39 +167,13 @@ public class CityRouter extends ActiveRouter {
 	public Message messageTransferred(String id, DTNHost from) {
 		Message msg = super.messageTransferred(id, from);
 		Integer nrofCopies = (Integer)msg.getProperty(MSG_COUNT_PROPERTY);
-		
-		assert nrofCopies != null : "Not a SnW message: " + msg;
-		
-		if (isBinary) {
-			/* in binary S'n'W the receiving node gets ceil(n/2) copies */
-			nrofCopies = (int)Math.ceil(nrofCopies/2.0);
-		}
-		else {
-			/* in standard S'n'W the receiving node gets only single copy */
-			nrofCopies = 1;
-		}
+		assert nrofCopies != null : "Not a City Router message: " + msg;
+		/* The new node always gets the same number of copies of the message 
+		 * as the transferring node */
 		msg.updateProperty(MSG_COUNT_PROPERTY, nrofCopies);
 		return msg;
 	}
 
-	protected List<Message> getMessagesWithCopiesLeft(boolean isMule) {
-		List<Message> list = new ArrayList<Message>();
-
-		for (Message m : getMessageCollection()) {
-			Integer nrofCopies = (Integer)m.getProperty(MSG_COUNT_PROPERTY);
-			assert nrofCopies != null : "SnW message " + m + " didn't have " + 
-				"nrof copies property!";
-			if(isMule){
-				list.add(m);
-			} else if (nrofCopies > 1) {
-				list.add(m);
-			}
-		}
-		return list;
-	}
-	
-	
-	
 	@Override
 	public void update() {
 		super.update();
@@ -185,45 +201,48 @@ public class CityRouter extends ActiveRouter {
 		for (Connection con : getConnections()) {
 			
 			DTNHost other = con.getOtherNode(getHost());
-			DTNHost self = getHost();
 			CityRouter othRouter = (CityRouter)other.getRouter();
-	
+			CityRouter selfRouter = (CityRouter)getHost().getRouter();
 			if (othRouter.isTransferring()) {
 				continue; // skip hosts that are transferring
 			}
 			
-			List<Message> msgCollection = getMessagesWithCopiesLeft(isDataMule(other));
-			
-			for (Message m : msgCollection) {
+			for (Message m : getMessageCollection()) {
 			
 				if (othRouter.hasMessage(m.getId())) {
 					continue; // skip messages that the other one has
 				}
-				
-				if(isDataMule(self) || isDataMule(other)){
+				/* Mules should have huge buffer, hence any strata messages can be passed */
+				if(isDataMule(other)){
 					if(othRouter.isNodePresentInAnyStrata(m.getTo())){
-						m.updateProperty(MSG_COUNT_PROPERTY, new Integer(initialNrofCopies));
 						messages.add(new Tuple<Message, Connection>(m,con));
 					}
-				} else {
-					/* 3. Data transfer could be between two normal hosts.
-					 * Use spray and wait algorithm here. */ 
+				}  
+				else {
+					/* Normal nodes do not have huge buffer, hence only first hop strata messages can be passed */ 	
 					
-					// TO-DO: Add check for destination node of message in any strata
+					if(!selfRouter.isNodePresentInAnyStrata(m.getTo()) && othRouter.isNodePresentInAnyStrata(m.getTo())){
+						/* Seems this dude has met this node but I haven't, Well I will try giving it to him */
+						messages.add(new Tuple<Message, Connection>(m,con));
+					} else if(selfRouter.getFirstHopStrata().containsKey(m.getTo()) && othRouter.getFirstHopStrata().containsKey(m.getTo())){
+						/* If this guy has met the destination node more number of times than me, I will give 
+						 * the message to him */
+						if(othRouter.getFirstHopStrata().get(m.getTo()) >= selfRouter.getFirstHopStrata().get(m.getTo())){
+							/* Free Buffer size factor */
+							if(othRouter.isRunningHighOnBuffer() && selfRouter.isRunningLowOnBuffer()) {
+								System.out.println("Case 2: Transferring message dur to low buffer space");
+								messages.add(new Tuple<Message, Connection>(m,con));
+							}
+						}
+					} else if(othRouter.getFirstHopStrata().containsKey(m.getTo()) && selfRouter.getMultiHopStrata().contains(m.getTo())){
+						/* For me this destination is multiple hops, but for him, it is single hop. So I will give it 
+						 * to him */
+						if(othRouter.isRunningHighOnBuffer() && selfRouter.isRunningLowOnBuffer()) {
+							System.out.println("Case 3: Transferring message dur to low buffer space");
+							messages.add(new Tuple<Message, Connection>(m,con));
+						}
+					}
 					
-					Integer nrofCopies = (Integer)m.getProperty(MSG_COUNT_PROPERTY);
-					assert nrofCopies != null : "Not a SnW message: " + m;
-
-					if (isBinary) {
-						/* in binary S'n'W the receiving node gets ceil(n/2) copies */
-						nrofCopies = (int)Math.ceil(nrofCopies/2.0);
-					}
-					else {
-						/* in standard S'n'W the receiving node gets only single copy */
-						nrofCopies = 1;
-					}
-					m.updateProperty(MSG_COUNT_PROPERTY, nrofCopies);
-					messages.add(new Tuple<Message, Connection>(m,con));	
 				}
 			}			
 		}
@@ -241,12 +260,24 @@ public class CityRouter extends ActiveRouter {
 		return r;
 	}
 
-	public List<DTNHost> getFirstHopStrata() {
+	public boolean isRunningLowOnBuffer() {
+		return (getBufferSize()/getFreeBufferSize() > lowBufferFactor);
+	}
+	
+	public boolean isRunningHighOnBuffer() {
+		return (getBufferSize()/getFreeBufferSize() < highBufferFactor);
+	}
+	
+	public Map<DTNHost, Integer> getFirstHopStrata() {
 		return this.firstHopStrata;
 	}
 
 	public List<DTNHost> getMultiHopStrata() {
 		return this.multiHopStrata;
+	}
+	
+	public List<DTNHost> getDataMules() {
+		return this.dataMules;
 	}
 
 	

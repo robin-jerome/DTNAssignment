@@ -23,18 +23,6 @@ public class CityRouter extends ActiveRouter {
 	
 	/** City router's setting namespace ({@value})*/ 
 	public static final String CITYROUTER_NS = "CityRouter";
-	/** identifier for the initial number of copies setting ({@value})*/ 
-	public static final String NROF_COPIES = "nrofCopies";
-	/** identifier for the binary-mode setting ({@value})*/ 
-	public static final String BUFFER_SIZE_COEFFICIENT = "bufferSizeCoefficient";
-	/** identifier for the buffer size coefficient setting ({@value})*/
-	public static final String BINARY_MODE = "binaryMode";
-	/** Message property key */
-	public static final String MSG_COUNT_PROPERTY = CITYROUTER_NS + "." + "copies";
-	/** Initial number of copies of message */
-	protected int initialNrofCopies;
-	/** Is binary mode of operation */
-	protected boolean isBinary;
 	/** Nodes with 1 hop contact */
 	private Map<DTNHost, Integer> firstHopStrata = new HashMap<DTNHost, Integer>();
 	/** Nodes with 2 hop contact */
@@ -53,8 +41,6 @@ public class CityRouter extends ActiveRouter {
 	public CityRouter(Settings s) {
 		super(s);
 		Settings cityRouterSettings = new Settings(CITYROUTER_NS);
-		initialNrofCopies = cityRouterSettings.getInt(NROF_COPIES);
-		isBinary = cityRouterSettings.getBoolean(BINARY_MODE);
 	}
 
 	/**
@@ -63,8 +49,6 @@ public class CityRouter extends ActiveRouter {
 	 */
 	protected CityRouter(CityRouter r) {
 		super(r);
-		this.initialNrofCopies = r.initialNrofCopies;
-		this.isBinary = r.isBinary;
 	}
 	
 	
@@ -158,7 +142,6 @@ public class CityRouter extends ActiveRouter {
 	public boolean createNewMessage(Message msg) {
 		makeRoomForNewMessage(msg.getSize());
 		msg.setTtl(this.msgTtl);
-		msg.addProperty(MSG_COUNT_PROPERTY, new Integer(initialNrofCopies));
 		addToMessages(msg, true);
 		return true;
 	}
@@ -166,11 +149,8 @@ public class CityRouter extends ActiveRouter {
 	@Override
 	public Message messageTransferred(String id, DTNHost from) {
 		Message msg = super.messageTransferred(id, from);
-		Integer nrofCopies = (Integer)msg.getProperty(MSG_COUNT_PROPERTY);
-		assert nrofCopies != null : "Not a City Router message: " + msg;
 		/* The new node always gets the same number of copies of the message 
 		 * as the transferring node */
-		msg.updateProperty(MSG_COUNT_PROPERTY, nrofCopies);
 		return msg;
 	}
 
@@ -230,7 +210,6 @@ public class CityRouter extends ActiveRouter {
 						if(othRouter.getFirstHopStrata().get(m.getTo()) >= selfRouter.getFirstHopStrata().get(m.getTo())){
 							/* Free Buffer size factor */
 							if(othRouter.isRunningHighOnBuffer() && selfRouter.isRunningLowOnBuffer()) {
-								System.out.println("Case 2: Transferring message dur to low buffer space");
 								messages.add(new Tuple<Message, Connection>(m,con));
 							}
 						}
@@ -238,7 +217,6 @@ public class CityRouter extends ActiveRouter {
 						/* For me this destination is multiple hops, but for him, it is single hop. So I will give it 
 						 * to him */
 						if(othRouter.isRunningHighOnBuffer() && selfRouter.isRunningLowOnBuffer()) {
-							System.out.println("Case 3: Transferring message dur to low buffer space");
 							messages.add(new Tuple<Message, Connection>(m,con));
 						}
 					}

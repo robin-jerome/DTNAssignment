@@ -72,7 +72,7 @@ public class CityRouter extends ActiveRouter {
 	public void changedConnection(Connection con) {
 		if (con.isUp()) {
 			DTNHost otherHost = con.getOtherNode(getHost());
-			if(isDataMule(otherHost)){
+			if(isDataMule(otherHost) && !dataMules.contains(otherHost)){
 				dataMules.add(otherHost);
 			}
 			addToFirstHopStrata(otherHost);

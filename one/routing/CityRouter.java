@@ -23,6 +23,11 @@ public class CityRouter extends ActiveRouter {
 	
 	/** City router's setting namespace ({@value})*/ 
 	public static final String CITYROUTER_NS = "CityRouter";
+	/** identifier for the low bufffer factor ({@value})*/ 
+	public static final String LOW_BUFFER_FACTOR = "lowBufferFactor";
+	/** identifier for the high bufffer factor ({@value})*/ 
+	public static final String HIGH_BUFFER_FACTOR = "highBufferFactor";
+	
 	/** Nodes with 1 hop contact */
 	private Map<DTNHost, Integer> firstHopStrata = new HashMap<DTNHost, Integer>();
 	/** Nodes with 2 hop contact */
@@ -30,8 +35,8 @@ public class CityRouter extends ActiveRouter {
 	/** Data mule nodes */
 	private List<DTNHost> dataMules = new LinkedList<DTNHost>();
 
-	private final int lowBufferFactor = 100;
-	private final int highBufferFactor = 2;
+	protected int lowBufferFactor;
+	protected int highBufferFactor;
 	
 	/**
 	 * Constructor. Creates a new message router based on the settings in
@@ -41,6 +46,8 @@ public class CityRouter extends ActiveRouter {
 	public CityRouter(Settings s) {
 		super(s);
 		Settings cityRouterSettings = new Settings(CITYROUTER_NS);
+		lowBufferFactor = cityRouterSettings.getInt(LOW_BUFFER_FACTOR);
+		highBufferFactor = cityRouterSettings.getInt(HIGH_BUFFER_FACTOR);
 	}
 
 	/**
@@ -49,9 +56,17 @@ public class CityRouter extends ActiveRouter {
 	 */
 	protected CityRouter(CityRouter r) {
 		super(r);
+		this.lowBufferFactor = r.lowBufferFactor;
+		this.highBufferFactor = r.highBufferFactor;
 	}
 	
-	
+	/**
+	 * Called when a connection is changed
+	 * If the connection is up, the other node is stratified.
+	 * 1. This node is added to the first hop strata of the current node.
+	 * 2. All hosts in the stratas of this host are copied to the multihop strata of this host.
+	 * 3. If this host is a data mule, then it is added to the list of data mules.
+	 */
 	@Override
 	public void changedConnection(Connection con) {
 		if (con.isUp()) {
@@ -67,7 +82,9 @@ public class CityRouter extends ActiveRouter {
 	/**
 	 * Updates the list of first hop nodes with the newly found host.
 	 * If the new host is already present in multihop strata it is 
-	 * removed from there and added to the first hop strata.
+	 * removed from there and added to the first hop strata. The count
+	 * represents the number of times the host has been met 
+	 * till the current time.
 	 * @param host The host we just met
 	 */
 	private void addToFirstHopStrata(DTNHost host) {
@@ -86,8 +103,8 @@ public class CityRouter extends ActiveRouter {
 
 	/**
 	 * Updates the list of multi-hop nodes with the newly found host.
-	 * If the new host is already present in single hop strata it is 
-	 * removed from there and added to the first hop strata.
+	 * All hosts in different stratas are added to the multihop strata 
+	 * of the current host.
 	 * @param host The host we just met
 	 */
 	private void addToMultiHopStrata(DTNHost host) {
@@ -119,24 +136,26 @@ public class CityRouter extends ActiveRouter {
 	}
 	
 	/**
-	 *  Helper method to check if there is a history of encounter with this node 
+	 * Helper method to check if there is a history of encounter with this node 
 	 * @param host The host we just met
+	 * @return boolean
 	 */
 	private boolean isNodePresentInAnyStrata(DTNHost host) {
 		return (this.firstHopStrata.containsKey(host)||this.multiHopStrata.contains(host)||this.dataMules.contains(host));
 	}
 	
 	/**
-	 *  Helper method to check if the host under context is a data mule.
-	 *  This algorithm assumes that mules have huge buffer sizes
+	 * Helper method to check if the host under context is a data mule.
+	 * This algorithm assumes that mules have huge buffer sizes
 	 * @param host The host we just met
+	 * @return boolean
 	 */
 	private boolean isDataMule(DTNHost host) {
 		return ((host.getRouter().getBufferSize() == 1000000000));
 	}
 	
 	/**
-	 *  Creates a new message and also sets initial number of copies.
+	 *  Creates a new message.
 	 */
 	@Override 
 	public boolean createNewMessage(Message msg) {
@@ -149,8 +168,6 @@ public class CityRouter extends ActiveRouter {
 	@Override
 	public Message messageTransferred(String id, DTNHost from) {
 		Message msg = super.messageTransferred(id, from);
-		/* The new node always gets the same number of copies of the message 
-		 * as the transferring node */
 		return msg;
 	}
 
@@ -170,8 +187,9 @@ public class CityRouter extends ActiveRouter {
 	}
 	
 	/**
-	 * Tries to send all other messages to all connected hosts ordered by
-	 * their delivery probability
+	 * Tries to send messages to all connected hosts based on the type of
+	 * node and the free available buffer size and the number of times this
+	 * contact had been met before
 	 * @return The return value of {@link #tryMessagesForConnected(List)}
 	 */
 	private Tuple<Message, Connection> trySendingMessages() {
@@ -192,21 +210,29 @@ public class CityRouter extends ActiveRouter {
 				if (othRouter.hasMessage(m.getId())) {
 					continue; // skip messages that the other one has
 				}
-				/* Mules should have huge buffer, hence any strata messages can be passed */
+				/* Mules should have huge buffer, hence pass those messages whose destination nodes
+				 * are in some strata of the peer node
+				 */
 				if(isDataMule(other)){
 					if(othRouter.isNodePresentInAnyStrata(m.getTo())){
 						messages.add(new Tuple<Message, Connection>(m,con));
 					}
 				}  
 				else {
-					/* Normal nodes do not have huge buffer, hence only first hop strata messages can be passed */ 	
 					
+					/* Normal nodes do not have huge buffer, hence data needs to be passed selectively
+					 * If the current node does not have the message's destination in any of its stratas,
+					 * but the peer node has, then the message is always passed to the peer
+					 */ 	
 					if(!selfRouter.isNodePresentInAnyStrata(m.getTo()) && othRouter.isNodePresentInAnyStrata(m.getTo())){
-						/* Seems this dude has met this node but I haven't, Well I will try giving it to him */
+						/* Seems this node has met the destination node but I haven't, Well I will try giving it to him */
 						messages.add(new Tuple<Message, Connection>(m,con));
 					} else if(selfRouter.getFirstHopStrata().containsKey(m.getTo()) && othRouter.getFirstHopStrata().containsKey(m.getTo())){
-						/* If this guy has met the destination node more number of times than me, I will give 
-						 * the message to him */
+						/* If both the current node and its peer have met the destination of the message, the message is transferred
+						 * only if
+						 * 1. The peer node has met the destination more number of times than what the current node has
+						 * 2. The peer host has high free buffer space and current host is running low on free buffer space 
+						 */
 						if(othRouter.getFirstHopStrata().get(m.getTo()) >= selfRouter.getFirstHopStrata().get(m.getTo())){
 							/* Free Buffer size factor */
 							if(othRouter.isRunningHighOnBuffer() && selfRouter.isRunningLowOnBuffer()) {
@@ -214,13 +240,15 @@ public class CityRouter extends ActiveRouter {
 							}
 						}
 					} else if(othRouter.getFirstHopStrata().containsKey(m.getTo()) && selfRouter.getMultiHopStrata().contains(m.getTo())){
-						/* For me this destination is multiple hops, but for him, it is single hop. So I will give it 
-						 * to him */
+						/* For the current node, the destination is multiple hops but for its peer the destination is singe hop.
+						 * The message is transferred
+						 * only if
+						 * 1. The peer host has high free buffer space and current host is running low on free buffer space 
+						 */
 						if(othRouter.isRunningHighOnBuffer() && selfRouter.isRunningLowOnBuffer()) {
 							messages.add(new Tuple<Message, Connection>(m,con));
 						}
 					}
-					
 				}
 			}			
 		}

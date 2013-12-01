@@ -310,7 +310,7 @@ public class CircularSpreadRouter extends ActiveRouter {
 
 		for (Message m : getMessageCollection()) {
 			Integer nrofCopies = (Integer)m.getProperty(MSG_COUNT_PROPERTY);
-			assert nrofCopies != null : "SnW message " + m + " didn't have " + 
+			assert nrofCopies != null : "Circular Spread Router message " + m + " didn't have " + 
 				"nrof copies property!";
 			if (nrofCopies > 1) {
 				list.add(m);
